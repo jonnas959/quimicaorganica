@@ -4494,6 +4494,268 @@ LIVRO.push(
   peg:'Pegadinha do ENEM: tensoativos são usados para dispersar manchas de petróleo no mar, e a escolha do detergente certo ajuda a evitar a eutrofização.' }
 );
 /* ============================================================================
+   LISTAS DO LIVRO
+   Questões transcritas das "Atividades para sala" e "Atividades propostas"
+   que acompanham os capítulos 19 a 22 nos slides. A fonte de cada uma é o
+   vestibular indicado no próprio livro.
+   As poucas questões do capítulo 23 não vinham nos slides (havia só a
+   indicação das páginas), então foram escritas aqui no mesmo formato e vão
+   marcadas com a fonte "questão do jogo".
+   ========================================================================== */
+
+var LISTAS = [
+/* ---------------- capítulo 19 — adição ---------------- */
+{ cap:19, fonte:'FUVEST', sala:true,
+  q:'Dois hidrocarbonetos insaturados, que são isômeros, foram submetidos separadamente à hidrogenação catalítica. Cada um deles reagiu com H₂ na proporção, em mols, de 1:1, obtendo-se, em cada caso, um hidrocarboneto de fórmula C₄H₁₀. Os hidrocarbonetos hidrogenados poderiam ser:',
+  ops:['but-2-eno e 2-metilpropeno','but-1-ino e but-1-eno','buta-1,3-dieno e ciclobutano','but-2-ino e but-1-eno'],
+  certa:0,
+  exp:'Para consumir <b>1 mol</b> de H₂ e chegar a C₄H₁₀, o composto de partida tem de ser C₄H₈ — ou seja, ter <b>uma</b> insaturação. E o enunciado exige que os dois sejam <b>isômeros entre si</b>. Só o but-2-eno e o 2-metilpropeno atendem às duas condições: ambos são C₄H₈. Os alcinos e o dieno são C₄H₆ e consumiriam 2 mols de H₂.' },
+
+{ cap:19, fonte:'UFLA', sala:true, sm:'C=CC',
+  q:'A reação do propeno com HBr na presença de peróxido forma o produto:',
+  ops:['CH₃CH₂CH₂Br','CH₃CHBrCH₃','CH₂BrCHBrCH₃','CH₃CH=CHBr'],
+  certa:0,
+  exp:'Com <b>peróxido</b> vale o efeito Kharasch: a adição é <b>anti-Markovnikov</b>. O bromo entra no carbono MAIS hidrogenado, e o produto é o <b>1-bromopropano</b> (CH₃CH₂CH₂Br). Sem peróxido seria o 2-bromopropano.' },
+
+{ cap:19, fonte:'MACKENZIE', sala:true,
+  q:'Sobre um alcadieno, sabe-se que: I. sofre adição 1,4; II. quando hidrogenado parcialmente, produz, em maior quantidade, o hex-3-eno. O nome desse dieno é:',
+  ops:['hexa-2,4-dieno','hexa-1,3-dieno','hexa-1,2-dieno','hexa-1,4-dieno'],
+  certa:0,
+  exp:'Sofrer <b>adição 1,4</b> exige um dieno <b>conjugado</b> (duplas separadas por uma simples), o que elimina o 1,2 (acumulado) e o 1,4 (isolado). No <b>hexa-2,4-dieno</b>, a adição 1,4 coloca os hidrogênios nos carbonos 2 e 5 e deixa a dupla nova entre os carbonos <b>3 e 4</b> — exatamente o hex-3-eno.' },
+
+{ cap:19, fonte:'UFBA',
+  q:'O principal produto obtido pela adição de 1 mol de HBr ao buta-1,3-dieno (eritreno) é o:',
+  ops:['1-bromo-but-2-eno','2-bromo-butano','2-bromo-but-2-eno','2,3-dibromo-but-2-eno'],
+  certa:0,
+  exp:'Com <b>1 mol</b> de HBr o dieno conjugado dá adição <b>1,4</b> como produto principal: o H entra no carbono 1, o Br no carbono 4, e sobra uma dupla nova entre os carbonos 2 e 3 — o <b>1-bromo-but-2-eno</b>. Note que sobra uma insaturação, então nem 2-bromo-butano nem o di-bromado servem.' },
+
+{ cap:19, fonte:'MACKENZIE',
+  q:'A equação CH₃–CH=C(CH₃)–CH₃ + H₂O, com H₂SO₄ concentrado, formando 2-metilbutan-2-ol, representa uma reação de:',
+  ops:['adição','substituição','eliminação','oxidação'],
+  certa:0,
+  exp:'A dupla se abre e a água entra: é uma <b>adição</b> (hidratação catalítica). Seguindo Markovnikov, o OH vai para o carbono menos hidrogenado — o que já tinha o grupo metila.' },
+
+{ cap:19, fonte:'UPE',
+  q:'"Nas reações de adição, a porção positiva a adicionar dirige-se para o carbono mais hidrogenado da insaturação." Essa é a regra de:',
+  ops:['Markovnikov','Kharasch','Sabatier-Senderens','Friedel-Crafts'],
+  certa:0,
+  exp:'É a regra de <b>Markovnikov</b>. Kharasch é justamente o efeito contrário (peróxido com HBr); Sabatier-Senderens é a hidrogenação catalítica; Friedel-Crafts é substituição em anel aromático.' },
+
+{ cap:19, fonte:'UPE', sm:'C=CC',
+  q:'O propeno reage por três caminhos: (1) H₂/Pt, (2) Br₂ a quente e (3) HCl. Os produtos B, C e D são, respectivamente:',
+  ops:['propano, 1,2-dibromopropano e 2-cloropropano','etano, 1,2-dibromopropano e 2-cloropropano','propano, 1,1-dibromopropano e 2-cloropropano','propano, 1,2-dibromopropano e 1-cloropropano'],
+  certa:0,
+  exp:'<b>H₂/Pt</b> satura a dupla → propano. <b>Br₂</b> dá o di-haleto <b>vicinal</b> (um Br em cada carbono da dupla) → 1,2-dibromopropano. <b>HCl</b> segue Markovnikov → <b>2</b>-cloropropano, com o cloro no carbono do meio.' },
+
+{ cap:19, fonte:'UEPB',
+  q:'O but-1-eno sofre adição de HBr pelos mecanismos de Markovnikov (sem peróxido) e de Kharasch (com peróxido). Os produtos obtidos são, respectivamente:',
+  ops:['2-bromobutano e 1-bromobutano','1-bromobutano e 2-bromobutano','1,2-dibromobutano e 1,3-dibromobutano','1-bromo-but-2-eno e 2-bromo-but-1-eno'],
+  certa:0,
+  exp:'<b>Markovnikov</b> (sem peróxido): o H vai para o C1, que é o mais hidrogenado, e o Br para o C2 → <b>2-bromobutano</b>. <b>Kharasch</b> (com peróxido): inverte, e o Br vai para o C1 → <b>1-bromobutano</b>. Os produtos são monobromados: nada de di-halogenado aqui, porque só entrou um HBr.' },
+
+{ cap:19, fonte:'UNESP', sala:true,
+  q:'A hidratação catalisada do but-1-eno, seguindo a regra de Markovnikov, produz qual álcool?',
+  ops:['butan-2-ol','butan-1-ol','2-metilpropan-2-ol','butano-1,2-diol'],
+  certa:0,
+  exp:'No but-1-eno (CH₂=CH–CH₂–CH₃), o C1 tem 2 H e o C2 tem 1 H. Por <b>Markovnikov</b>, o hidrogênio da água entra no C1 (mais hidrogenado) e o <b>OH no C2</b>: forma-se o <b>butan-2-ol</b>, um álcool secundário. Por isso a hidratação de alceno quase nunca dá álcool primário.' },
+
+{ cap:19, fonte:'ESAL-MG', sm:'C=CC',
+  q:'Na reação do propeno com HBr, sem peróxido, qual é o produto e como se classifica a reação?',
+  ops:['2-bromopropano; reação de adição','1-bromopropano; reação de adição','2-bromopropano; reação de substituição','1-bromopropano; reação de eliminação'],
+  certa:0,
+  exp:'É uma <b>adição</b> — a dupla se abre e nada sai da molécula. Por Markovnikov o bromo fica no carbono do meio: <b>2-bromopropano</b>. Com peróxido, o produto passaria a ser o 1-bromopropano.' },
+
+{ cap:19, fonte:'UNICAMP', sala:true,
+  q:'O propino reage com Br₂ (1 mol) formando um composto com uma dupla ligação e dois bromos. Quantos isômeros esse produto pode ter, e por quê?',
+  ops:['dois isômeros, cis e trans, porque sobra uma dupla com ligantes diferentes','um só isômero, porque a molécula é simétrica','três isômeros de posição','nenhum isômero: o produto é único e saturado'],
+  certa:0,
+  exp:'Com 1 mol de Br₂, apenas uma das ligações pi da tripla se rompe, e sobra uma <b>dupla</b> — o 1,2-dibromoprop-1-eno. Como cada carbono da dupla tem dois ligantes diferentes, existe <b>isomeria geométrica</b>: os isômeros <b>cis e trans</b>.' },
+
+/* ---------------- capítulo 20 — substituição em alcanos ---------------- */
+{ cap:20, fonte:'PUC-RJ', sala:true, sm:'CC(C)C',
+  q:'O 2-metilpropano reage com Br₂ na presença de luz. Seus principais produtos são:',
+  ops:['(CH₃)₃CBr + HBr','(CH₃)₂CHCH₂Br + HBr','(CH₃)₂CHCH₂Br + H₂','(CH₂Br)₂CHCH₃ + H₂'],
+  certa:0,
+  exp:'É uma <b>substituição</b> radicalar: sai HBr, nunca H₂. E o hidrogênio arrancado é o do carbono <b>terciário</b>, porque o radical formado é o mais estável — o produto principal é o <b>2-bromo-2-metilpropano</b>, (CH₃)₃CBr.' },
+
+{ cap:20, fonte:'FUVEST', sm:'CC(C)(C)CC',
+  q:'Na reação do cloro gasoso com 2,2-dimetilbutano, em presença de luz, quantos monoclorados podem se formar SEM carbono assimétrico na molécula?',
+  ops:['2','1','3','4'],
+  certa:0,
+  exp:'O 2,2-dimetilbutano tem <b>3</b> tipos de hidrogênio, logo 3 monoclorados: 1-cloro-2,2-dimetilbutano, 3-cloro-2,2-dimetilbutano e 1-cloro-3,3-dimetilbutano. Destes, só o <b>3-cloro-2,2-dimetilbutano</b> tem carbono assimétrico (quatro ligantes diferentes). Sobram <b>2</b> sem carbono assimétrico.' },
+
+{ cap:20, fonte:'UEPB', sm:'CC(C)CC(C)C',
+  q:'A monocloração do 2,4-dimetilpentano pode produzir quantos produtos diferentes?',
+  ops:['3','2','4','5'],
+  certa:0,
+  exp:'Conte os <b>tipos</b> de hidrogênio: os das quatro metilas das pontas são todos equivalentes (1), os dois CH terciários são equivalentes entre si (2) e o CH₂ do meio (3). São <b>3</b> tipos, logo <b>3</b> monoclorados.' },
+
+{ cap:20, fonte:'UNIMONTES', sm:'CCCCC',
+  q:'A cloração radicalar do pentano produz três monoclorados. Qual deles é obtido como mistura racêmica?',
+  ops:['2-cloropentano','1-cloropentano','3-cloropentano','nenhum deles'],
+  certa:0,
+  exp:'Mistura racêmica aparece quando o produto tem <b>carbono assimétrico</b>. No <b>2-cloropentano</b> o carbono 2 está ligado a H, Cl, CH₃ e C₃H₇ — quatro grupos diferentes. No 1-cloro e no 3-cloro há ligantes repetidos, então não há quiralidade.' },
+
+{ cap:20, fonte:'livro', sm:'CCC',
+  q:'Na cloração do propano formam-se 48% de 1-cloropropano e 52% de 2-cloropropano. Por que o 2-cloropropano aparece em maior proporção, se o propano tem 6 hidrogênios primários e só 2 secundários?',
+  ops:['porque cada hidrogênio secundário é cerca de três vezes mais reativo que um primário','porque o cloro é atraído pelo meio da cadeia','porque o 1-cloropropano se decompõe','porque o carbono secundário tem mais hidrogênios'],
+  certa:0,
+  exp:'A conta estatística favoreceria o primário (6 H contra 2). O que inverte o resultado é a <b>reatividade</b>: o radical secundário é mais estável, e cada hidrogênio secundário reage cerca de <b>três vezes mais rápido</b>. Daí a ordem 3° > 2° > 1°.' },
+
+/* ---------------- capítulo 21 — aromáticos ---------------- */
+{ cap:21, fonte:'UECE', sala:true,
+  q:'A equação em que o benzeno reage com um cloreto de ácido (R–CO–Cl), na presença de AlCl₃, liberando HCl, representa:',
+  ops:['a formação de uma cetona aromática (acilação de Friedel-Crafts)','a halogenação do benzeno','a hidrólise do benzeno','a desidratação do cloreto de ácido'],
+  certa:0,
+  exp:'É a <b>acilação de Friedel-Crafts</b>: entra no anel o grupo <b>acila</b> (–CO–R) e sai HCl. O produto tem uma carbonila entre o anel e o grupo R — ou seja, é uma <b>cetona aromática</b>.' },
+
+{ cap:21, fonte:'livro',
+  q:'O cloro é orto-para dirigente e o grupo nitro é meta dirigente. Um composto tem –Cl e –NO₂ em posições META entre si. Como ele foi provavelmente obtido?',
+  ops:['pela cloração do nitrobenzeno','pela nitração do clorobenzeno','pela redução do 1-cloro-3-amino-benzeno','pela nitração do cloreto de benzila'],
+  certa:0,
+  exp:'Quem estava no anel primeiro é que decide a posição do segundo grupo. Se o <b>–NO₂</b> já estava lá, ele é <b>meta dirigente</b> e manda o cloro para a posição meta — resultado compatível. Se fosse o contrário (clorobenzeno nitrado), o Cl é orto-para dirigente e os produtos seriam orto e para, não meta.' },
+
+{ cap:21, fonte:'livro',
+  q:'Comparando a anilina (com –NH₂) e a benzonitrila (com –CN) nas reações de substituição eletrofílica, pode-se afirmar que:',
+  ops:['o –NH₂ é orto-para dirigente','o –NH₂ é meta dirigente','o –CN é orto-para dirigente','o –CN é orto-meta dirigente'],
+  certa:0,
+  exp:'O <b>–NH₂</b> é <b>orto-para dirigente</b> e ativante (a anilina é muito reativa). Já o <b>–CN</b> é <b>meta dirigente</b> e desativante. Não existe "orto-meta" nem "meta-para": os pares possíveis são orto-para OU meta sozinho.' },
+
+{ cap:21, fonte:'UFRJ',
+  q:'Partindo do benzeno, obtém-se tolueno com o reagente A e AlCl₃; depois, o tolueno com o reagente B e H₂SO₄ a 30 °C dá três nitrotoluenos (62%, 5% e 33%). Quais são A e B?',
+  ops:['A = CH₃Cl (haleto de alquila); B = HNO₃','A = HNO₃; B = CH₃Cl','A = CH₃OH; B = H₂SO₄','A = Cl₂; B = NaNO₃'],
+  certa:0,
+  exp:'Para colocar o grupo metila no anel usa-se um <b>haleto de alquila com AlCl₃</b> — é a alquilação de Friedel-Crafts. Para colocar o –NO₂ usa-se <b>HNO₃</b> com H₂SO₄ (nitração). Repare nas porcentagens: orto 62% e para 33% somam 95%, enquanto o meta fica com apenas 5% — é a dirigência orto-para do metila aparecendo nos números.' },
+
+{ cap:21, fonte:'livro',
+  q:'Os três nitrotoluenos da questão anterior (orto, meta e para) são, entre si, isômeros de:',
+  ops:['posição','cadeia','função','compensação'],
+  certa:0,
+  exp:'Têm a mesma fórmula molecular e a mesma cadeia; o que muda é <b>onde</b> o grupo –NO₂ está preso no anel. Isso é isomeria constitucional de <b>posição</b>.' },
+
+/* ---------------- capítulo 22 — oxirredução ---------------- */
+{ cap:22, fonte:'UPE', sala:true,
+  q:'Um composto do tipo olefina (I) apresenta isomeria geométrica cis-trans e (II) após ozonólise com Zn em pó fornece um aldeído R–CHO e uma cetona R–CO–R\'. Esse composto é o:',
+  ops:['3-metilpent-2-eno','2,3-dimetilbut-2-eno','2-metilpent-1-eno','4-metilpent-1-eno'],
+  certa:0,
+  exp:'Na ozonólise, o carbono da dupla que tem <b>1 H</b> vira aldeído e o que <b>não tem H</b> vira cetona. No <b>3-metilpent-2-eno</b>, um carbono da dupla carrega H (dá etanal) e o outro carrega duas cadeias (dá butanona). E ele tem isomeria cis-trans, porque cada carbono da dupla tem dois ligantes diferentes. No 2,3-dimetilbut-2-eno nenhum carbono tem H (sairiam duas cetonas); nos que têm =CH₂ sairia metanal.' },
+
+{ cap:22, fonte:'FUVEST', sala:true,
+  q:'Automóveis a álcool emitem grande quantidade de aldeído, produzido por:',
+  ops:['oxidação parcial do álcool','oxidação completa do álcool','redução do álcool','fragmentação da molécula do álcool'],
+  certa:0,
+  exp:'O etanol é um álcool <b>primário</b>: oxida a <b>etanal</b> e, se a oxidação continuar, a ácido etanoico. O aldeído no escapamento é o produto da oxidação que <b>parou no meio do caminho</b> — por isso, oxidação parcial. A oxidação completa levaria a CO₂ e H₂O.' },
+
+{ cap:22, fonte:'UEL',
+  q:'Um bafômetro funciona pela reação 3 C₂H₅OH + 2 Cr₂O₇²⁻ + 16 H⁺ → 3 C₂H₄O₂ + 4 Cr³⁺ + 11 H₂O. O produto orgânico formado é:',
+  ops:['um ácido carboxílico','um aldeído','uma cetona','um álcool'],
+  certa:0,
+  exp:'C₂H₄O₂ é o <b>ácido etanoico</b>. O etanol (álcool primário) foi oxidado até ácido pelo dicromato, enquanto o crômio caiu de Cr⁶⁺ (laranja) para <b>Cr³⁺ (verde)</b> — é a mudança de cor que o aparelho mede.' },
+
+{ cap:22, fonte:'UCDB',
+  q:'A manose (que tem o grupo –CHO) é convertida em manitol (que tem –CH₂OH no lugar). Essa reação é uma:',
+  ops:['redução','oxidação','hidrólise','esterificação'],
+  certa:0,
+  exp:'O grupo <b>–CHO virou –CH₂OH</b>: o carbono ganhou hidrogênio e o seu Nox <b>diminuiu</b>. Isso é uma <b>redução</b>. É a reação inversa daquela que transforma álcool primário em aldeído.' },
+
+{ cap:22, fonte:'MACKENZIE',
+  q:'Um alceno, por ozonólise seguida de hidrólise, produziu metanal e butanona. Qual era o alceno?',
+  ops:['2-metilbut-1-eno','2-metilbut-2-eno','pent-2-eno','3-metilbut-1-eno'],
+  certa:0,
+  exp:'Faça o caminho inverso: junte os dois carbonos que ficaram com o oxigênio e apague os dois O. O <b>metanal</b> (H₂C=O) veio de um carbono com <b>2 H</b> (=CH₂); a <b>butanona</b> veio de um carbono ligado a um metil e a um etil. Reconstruindo: CH₂=C(CH₃)–CH₂–CH₃, o <b>2-metilbut-1-eno</b>.' },
+
+{ cap:22, fonte:'UFMG', sm:'CC(C)=CC',
+  q:'O 2-metilbut-2-eno sofre oxidação ENÉRGICA (KMnO₄/H⁺ a quente). Quais são os produtos?',
+  ops:['propanona e ácido etanoico','butano-2,3-diol e água','propanona e etanal','ácido propanoico e CO₂'],
+  certa:0,
+  exp:'A cadeia quebra na dupla. O carbono que tem <b>duas cadeias e nenhum H</b> vira <b>cetona</b> (propanona); o que tem <b>1 H</b> vira <b>ácido carboxílico</b> (ácido etanoico). Se fosse ozonólise, o segundo daria etanal em vez de ácido; se fosse oxidação branda, sairia o diol sem quebrar a cadeia.' },
+
+{ cap:22, fonte:'PUC-SP', sm:'CC=CC',
+  q:'Na ozonólise, por que é indispensável adicionar zinco em pó junto com a água?',
+  ops:['porque o Zn destrói o H₂O₂ formado, que oxidaria o aldeído a ácido','porque o Zn acelera a quebra da dupla','porque o Zn neutraliza o excesso de ozônio','porque sem Zn a reação não começa'],
+  certa:0,
+  exp:'A ozonólise produz <b>peróxido de hidrogênio</b>. Se ele permanecer no meio, oxida o aldeído recém-formado e a resposta passa a ser um ácido carboxílico. O <b>zinco em pó destrói o H₂O₂</b> e preserva o aldeído.' },
+
+{ cap:22, fonte:'UFMG', sm:'CC(C)=CC',
+  q:'O mesmo 2-metilbut-2-eno é submetido a quatro tratamentos. Qual associação está correta?',
+  ops:['oxidação branda → 2-metilbutano-2,3-diol','oxidação branda → propanona e ácido etanoico','ozonólise → CO₂ e água','combustão completa → glicol'],
+  certa:0,
+  exp:'<b>Branda</b> (Baeyer, frio e diluído): entra um OH em cada carbono da dupla, formando o <b>diol</b>, sem quebrar a cadeia. <b>Enérgica</b>: quebra e dá propanona + ácido etanoico. <b>Ozonólise</b>: quebra e dá propanona + etanal. <b>Combustão completa</b>: só CO₂ e H₂O.' },
+
+/* ---------------- capítulo 23 — eliminação, ésteres e sabões ---------------- */
+{ cap:23, fonte:'questão do jogo', sm:'CCC(O)C',
+  q:'O butan-2-ol é aquecido a 170 °C com H₂SO₄. Qual é o produto principal e por quê?',
+  ops:['but-2-eno, porque o H sai do carbono β menos hidrogenado (Zaitsev)','but-1-eno, porque o H sai do carbono β mais hidrogenado','etoxibutano, porque duas moléculas se unem','butanona, porque o álcool é oxidado'],
+  certa:0,
+  exp:'A 170 °C a desidratação é <b>intramolecular</b> e dá alceno. O carbono α é o que tem o OH; os β são os vizinhos. Pela regra de <b>Zaitsev</b>, sai o H do β <b>menos hidrogenado</b> (o CH₂, e não o CH₃), formando o alceno mais substituído: o <b>but-2-eno</b>. O but-1-eno também se forma, mas em menor quantidade.' },
+
+{ cap:23, fonte:'questão do jogo', sm:'CCO',
+  q:'Etanol com H₂SO₄ a 140 °C produz principalmente:',
+  ops:['etoxietano (éter), por desidratação intermolecular','eteno, por desidratação intramolecular','etanal, por oxidação','ácido etanoico, por oxidação total'],
+  certa:0,
+  exp:'A <b>140 °C</b> — temperatura MENOR — a desidratação é <b>intermolecular</b>: duas moléculas de álcool perdem uma água entre si e sobra um <b>éter</b>. A 170 °C seria intramolecular e daria eteno. Temperatura maior, molécula menor.' },
+
+{ cap:23, fonte:'questão do jogo',
+  q:'A saponificação de um óleo vegetal com NaOH produz:',
+  ops:['sabão duro e glicerol','sabão mole e glicerol','biodiesel e glicerol','ácido graxo e água'],
+  certa:0,
+  exp:'Saponificação é a <b>hidrólise alcalina</b> de um triéster do glicerol: forma o <b>sal do ácido graxo (o sabão)</b> e libera <b>glicerol</b>. Com <b>NaOH</b> o sabão é <b>duro</b> (barra); com KOH seria mole. Biodiesel viria da transesterificação, que usa álcool e não base.' },
+
+{ cap:23, fonte:'questão do jogo',
+  q:'Uma pessoa lava as mãos com sabão em uma água que contém muito Ca²⁺ e Mg²⁺ e percebe que quase não se forma espuma. A explicação é que:',
+  ops:['esses cátions formam sais insolúveis com o ânion do sabão — é a água dura','o sabão foi neutralizado pelo pH da água','a água estava fria demais para dissolver o sabão','os cátions oxidam a cadeia do sabão'],
+  certa:0,
+  exp:'É o efeito da <b>água dura</b>. Os cátions <b>Ca²⁺ e Mg²⁺</b> se combinam com os ânions do sabão formando <b>compostos insolúveis</b>, que precipitam em vez de fazer espuma — daí a sensação de que o sabão "não rende".' },
+
+{ cap:23, fonte:'questão do jogo',
+  q:'Qual a diferença química entre um sabão e um detergente sintético comum?',
+  ops:['o sabão é sal de ácido carboxílico; o detergente, em geral, é sal de ácido sulfônico','o sabão é sólido e o detergente é líquido','o sabão é sintético e o detergente é natural','não há diferença química, só de marca'],
+  certa:0,
+  exp:'Os dois são <b>tensoativos</b> com cauda apolar e cabeça polar. O que muda é a cabeça: no <b>sabão</b> ela é um <b>sal de ácido carboxílico</b> (vem da saponificação de gordura); na maioria dos <b>detergentes</b> é um <b>sal de ácido sulfônico</b> de cadeia longa.' },
+
+{ cap:23, fonte:'questão do jogo',
+  q:'Um rótulo de desinfetante traz "ingrediente ativo: quaternário de amônio". Isso indica um detergente:',
+  ops:['catiônico, com ação germicida','aniônico, usado para louça','não iônico, usado em cosméticos','biodegradável, sem ação de limpeza'],
+  certa:0,
+  exp:'Os detergentes do tipo <b>sal de amônio quaternário</b> são <b>catiônicos</b> e têm ação <b>germicida</b>. Por isso aparecem em desinfetantes, e não apenas como agentes de limpeza. Os detergentes de louça comuns são aniônicos.' },
+
+{ cap:23, fonte:'questão do jogo',
+  q:'O biodiesel é obtido pela reação de um óleo vegetal com metanol ou etanol, na presença de catalisador. Essa reação se chama:',
+  ops:['transesterificação (alcoólise)','saponificação','hidrólise ácida','esterificação de Fischer'],
+  certa:0,
+  exp:'É a <b>transesterificação</b>, ou alcoólise: o éster troca o álcool que estava preso a ele pelo álcool novo. O óleo (triéster do glicerol) vira uma mistura de ésteres de ácidos graxos — o <b>biodiesel</b> — liberando <b>glicerol</b>.' },
+
+{ cap:23, fonte:'questão do jogo', sm:'CC(=O)O',
+  q:'Ácido etanoico e etanol reagem com H₂SO₄ formando etanoato de etila e água. Se o oxigênio do ÁLCOOL estiver marcado com O-18, onde ele vai aparecer?',
+  ops:['no éster','na água','metade no éster e metade na água','no ácido que sobrou'],
+  certa:0,
+  exp:'Na esterificação, a água formada leva o <b>OH do ácido</b> e o <b>H do álcool</b>. O oxigênio do álcool permanece ligado ao carbono e vai parar <b>no éster</b>. Foi exatamente com oxigênio marcado que se descobriu quem cede o quê.' },
+
+{ cap:23, fonte:'questão do jogo', sm:'CCC(Br)C',
+  q:'O 2-bromobutano é tratado com KOH. Que produto se forma em cada meio?',
+  ops:['em meio alcoólico, but-2-eno; em meio aquoso, butan-2-ol','em meio alcoólico, butan-2-ol; em meio aquoso, but-2-eno','nos dois casos, butan-2-ol','nos dois casos, but-2-eno'],
+  certa:0,
+  exp:'A mesma base dá produtos opostos conforme o solvente. <b>Alcoólico</b> → <b>eliminação</b>, formando alceno pela regra de Zaitsev (but-2-eno). <b>Aquoso</b> → <b>substituição</b>, formando álcool (butan-2-ol). Leia sempre o meio antes de responder.' }
+];
+
+function listasDoCap(cap){
+  return LISTAS.filter(function(l){ return l.cap===cap; });
+}
+
+/* ---------- mais dois verbetes tirados dos slides ---------- */
+LIVRO.push(
+{ cat:'Substituição', tit:'CCC e NNN: a mnemônica do tolueno', tags:'mnemonica ccc nnn tolueno calor claro cadeia neve noite nucleo luz',
+  txt:'Para não errar onde o halogênio entra no tolueno, a regra é lembrada por duas siglas:<div class="tscroll"><table class="t"><tr><th>C C C</th><th>N N N</th></tr><tr><td><b>C</b>alor (Δ)</td><td><b>N</b>eve (frio)</td></tr><tr><td><b>C</b>laro (luz)</td><td><b>N</b>oite (escuro)</td></tr><tr><td><b>C</b>adeia lateral (–CH₃)</td><td><b>N</b>úcleo (anel benzênico)</td></tr></table></div>Ou seja: <b>calor e claro → cadeia</b>; <b>neve e noite → núcleo</b>.',
+  ex:'CC1=CC=CC=C1', exTxt:'Tolueno + Cl₂ com calor e luz ataca o –CH₃; a frio e no escuro (com catalisador) ataca o anel.' },
+
+{ cat:'Integração', tit:'Como o sabão tira a gordura, passo a passo', tags:'sabao adesao desligamento emulsao micela gordura tecido limpeza',
+  txt:'A limpeza acontece em três momentos:<ol class="tight"><li><b>Adesão</b> — as caudas apolares do sabão se enfiam na gordura presa ao tecido, deixando as cabeças polares voltadas para a água.</li><li><b>Desligamento</b> — a gordura fica cercada de cargas iguais, que se repelem, e se solta da fibra.</li><li><b>Emulsão</b> — a gordura é envolvida em gotículas (as <b>micelas</b>), que ficam dispersas na água e são levadas pelo enxágue.</li></ol>',
+  peg:'Por isso o sabão não "dissolve" a gordura: ele a envolve. E por isso a água dura atrapalha — com Ca²⁺ e Mg²⁺ o sabão precipita antes de formar micela.' },
+
+{ cat:'Integração', tit:'Tipos de tensoativo', tags:'tensoativo anionico cationico neutro nao ionico detergente classificacao',
+  txt:'Os tensoativos se classificam pela carga da cabeça polar:<ul class="tight"><li><b>Aniônicos</b> — cabeça negativa (sais de ácido carboxílico ou sulfônico). São os sabões e a maioria dos detergentes de limpeza.</li><li><b>Catiônicos</b> — cabeça positiva, em geral sal de amônio quaternário. Têm ação <b>germicida</b> e aparecem em desinfetantes e amaciantes.</li><li><b>Não iônicos (neutros)</b> — sem carga; a parte polar é feita de vários oxigênios. São usados em cosméticos e produtos delicados.</li></ul>' }
+);
+/* ============================================================================
    8. ESTADO — XP, progresso por tópico, revisão espaçada, localStorage
    ========================================================================== */
 
@@ -4651,7 +4913,9 @@ var TOPICO_NOME = {
   classe_funcao:'Álcool/amina/haleto 1°, 2° ou 3°', pares:'Funções que se confundem',
   grupo:'Grupo funcional', acharGrupo:'Achar o grupo na estrutura',
   conceito:'Teoria dos capítulos', conceito19:'Teoria — adição', conceito20:'Teoria — substituição',
-  conceito21:'Teoria — aromáticos', conceito22:'Teoria — oxirredução', conceito23:'Teoria — eliminação e ésteres'
+  conceito21:'Teoria — aromáticos', conceito22:'Teoria — oxirredução', conceito23:'Teoria — eliminação e ésteres',
+  lista:'Lista do livro', lista19:'Lista — capítulo 19', lista20:'Lista — capítulo 20',
+  lista21:'Lista — capítulo 21', lista22:'Lista — capítulo 22', lista23:'Lista — capítulo 23'
 };
 
 /* ---- tabela das funções orgânicas (usada no treino e na referência) ---- */
@@ -4887,6 +5151,33 @@ var RX_POR_TOPICO = {
   tautomeria:['hidratacao_alcino'],
   ozonolise:['ozonolise','oxidacao_energica']
 };
+
+/* ---- questões das listas de exercícios do livro ---- */
+function questaoLista(cap, indice){
+  var pool = cap ? listasDoCap(cap) : LISTAS;
+  if(!pool.length) pool = LISTAS;
+  var l = (indice!==undefined && indice!==null) ? pool[indice % pool.length] : pick(pool);
+  var certa = l.ops[l.certa];
+  var erradas = l.ops.filter(function(o,i){ return i!==l.certa; });
+  var ops = shuffle(l.ops.map(function(t,i){
+    return opc(t, i===l.certa, i===l.certa ? null : 'Não é essa. Leia a resolução abaixo.');
+  }));
+  var etiqueta = '<span class="chip ro">' + esc(l.fonte) + '</span> ' +
+                 '<span class="chip">cap. ' + l.cap + (l.sala ? ' · para sala' : '') + '</span>';
+  return {
+    topico: cap ? ('lista'+cap) : 'lista',
+    tipo:'escolha', opcoes:ops,
+    mol: l.sm ? smiles(l.sm) : null,
+    semMol: !l.sm,
+    fonte:l.fonte,
+    enunciado: etiqueta + '<div style="margin-top:8px">' + l.q + '</div>',
+    explica:l.exp,
+    dicas:['Questão de ' + l.fonte + ', do capítulo ' + l.cap + '. Leia devagar: o enunciado costuma dar a condição que decide tudo.',
+           'Pode descartar de cara: “' + esc(erradas[0]) + '”.',
+           'A resposta começa com “' + esc(certa.split(' ').slice(0,3).join(' ')) + '…”.'],
+    xp:18
+  };
+}
 
 /* ---- teoria dos capítulos (slides da professora) ---- */
 function questaoConceito(cap){
@@ -5358,6 +5649,12 @@ function gerarQuestao(topico, nivel){
     case 'conceito21': return questaoConceito(21);
     case 'conceito22': return questaoConceito(22);
     case 'conceito23': return questaoConceito(23);
+    case 'lista': return questaoLista(null);
+    case 'lista19': return questaoLista(19);
+    case 'lista20': return questaoLista(20);
+    case 'lista21': return questaoLista(21);
+    case 'lista22': return questaoLista(22);
+    case 'lista23': return questaoLista(23);
     case 'pares': return questaoPares(nivel);
     case 'grupo': return questaoGrupo(nivel);
     case 'markovnikov': case 'saytzeff': case 'tautomeria':
@@ -5451,7 +5748,7 @@ var MODOS = [
 // telas que vivem debaixo de uma entrada do menu
 var MODO_PAI = {
   funcoes:'treinar', aleatoria:'treinar', laboratorio:'treinar',
-  inverso:'treinar', identificacao:'treinar', nivel:'trilha'
+  inverso:'treinar', identificacao:'treinar', listas:'treinar', nivel:'trilha'
 };
 var MODO_ATUAL = 'trilha';
 var SUPRIMIR_TUTORIAL = false;   // evita tutorial por cima do modal de boas-vindas
@@ -5479,6 +5776,7 @@ function irPara(modo, args){
   switch(modo){
     case 'trilha': telaTrilha(args); break;
     case 'treinar': telaTreinar(args); break;
+    case 'listas': telaListas(args); break;
     case 'funcoes': telaFuncoes(args); break;
     case 'construtor': telaConstrutor(args); break;
     case 'aleatoria': telaAleatoria(args); break;
@@ -5670,6 +5968,9 @@ var TREINOS = [
   { id:'inverso', nome:'Reação inversa', res:'Dos produtos para o reagente',
     txt:'Você vê os produtos e as condições e descobre de onde vieram. É exatamente o raciocínio que a prova cobra na ozonólise e na oxidação enérgica.',
     topicos:['inverso'] },
+  { id:'listas', nome:'Listas do livro', res:'Questões de vestibular do material',
+    txt:'As questões das atividades do livro — FUVEST, UNICAMP, MACKENZIE, UEPB, UFRJ e outras — com resolução comentada. Dá para resolver capítulo por capítulo ou tudo misturado.',
+    topicos:['lista','lista19','lista20','lista21','lista22','lista23'] },
   { id:'identificacao', nome:'Identificação de frasco', res:'Bancada com nove testes',
     txt:'Um líquido desconhecido, alguns candidatos e os testes de bancada: água de bromo, Baeyer, Tollens, Fehling, dicromato, sódio, NaOH, bicarbonato e chama. Ganha mais quem usa menos testes.',
     topicos:['teste'] }
@@ -5710,6 +6011,48 @@ function telaTreinar(){
   if($('trRevisar')) $('trRevisar').onclick = abrirRevisao;
 }
 
+/* ---- listas do livro, por capítulo ---- */
+function telaListas(){
+  var caps = [19,20,21,22,23];
+  var html = '<div class="card">' +
+    '<button class="btn sm gh" style="float:right" onclick="irPara(\'treinar\')">&larr; Treinos</button>' +
+    '<h2 style="margin-bottom:2px">Listas do livro</h2>' +
+    '<p class="sub">As atividades que acompanham cada capítulo, com a fonte original e resolução comentada. ' +
+    'São '+LISTAS.length+' questões no total.</p></div>';
+
+  html += '<div class="grid g2" style="margin-top:12px">' + caps.map(function(c){
+    var lista = listasDoCap(c);
+    if(!lista.length) return '';
+    var d = dominioDe(['lista'+c]);
+    var nome = { 19:'Adição', 20:'Substituição em alcanos', 21:'Aromáticos',
+                 22:'Oxirredução', 23:'Eliminação, ésteres e sabões' }[c];
+    var fontes = [];
+    lista.forEach(function(l){ if(fontes.indexOf(l.fonte)<0 && l.fonte!=='questão do jogo' && l.fonte!=='livro') fontes.push(l.fonte); });
+    return '<div class="card" data-lista="'+c+'" style="cursor:pointer;background:var(--panel2)">' +
+      '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">' +
+        '<h3 style="margin:0">Capítulo '+c+'</h3>' +
+        '<span class="tiny">'+esc(nome)+'</span><span style="flex:1"></span>' +
+        (d===null ? '<span class="chip">'+lista.length+' questões</span>'
+                  : '<span class="chip '+(d>=70?'ok':(d>=40?'wa':'no'))+'">'+d+'% · '+lista.length+' questões</span>') +
+      '</div>' +
+      (fontes.length ? '<div class="tiny" style="margin-top:6px">'+esc(fontes.slice(0,5).join(' · '))+'</div>' : '') +
+      '</div>';
+  }).join('') + '</div>';
+
+  html += '<div class="card" style="margin-top:12px"><div class="btnrow">' +
+    '<button class="btn pri" id="listaTudo">Tudo misturado ('+LISTAS.length+' questões)</button>' +
+    '</div></div>';
+
+  render(html);
+  qsa('[data-lista]').forEach(function(el){
+    el.onclick = function(){
+      var c = parseInt(el.getAttribute('data-lista'),10);
+      iniciarSessao({ modo:'lista', cap:c, titulo:'Capítulo '+c });
+    };
+  });
+  $('listaTudo').onclick = function(){ iniciarSessao({ modo:'lista', cap:null }); };
+}
+
 /* ============================================================================
    TELA: NÍVEL (teoria → tutorial → prática → desafio)
    ========================================================================== */
@@ -5742,7 +6085,14 @@ function telaNivel(args){
     '<div class="tiny" style="margin:5px 0 10px">'+Math.min(st.pratica,t.metaPratica)+' de '+t.metaPratica+' acertos</div>' +
     '<button class="btn pri" id="btnPratica">Praticar</button></div>';
 
-  html += '<div class="card"><h3>4 · Desafio</h3>' +
+  var nLista = t.cap ? listasDoCap(t.cap).length : 0;
+  if(nLista){
+    html += '<div class="card"><h3>4 · Lista do livro</h3>' +
+      '<p class="sub">'+nLista+' questões de vestibular das atividades deste capítulo, na ordem do livro, com resolução comentada.</p>' +
+      '<button class="btn" id="btnLista">Resolver a lista do capítulo '+t.cap+'</button></div>';
+  }
+
+  html += '<div class="card"><h3>'+(nLista?'5':'4')+' · Desafio</h3>' +
     '<p class="sub">'+t.metaDesafio+' questões sem dica. Acerte 70% para concluir o nível' +
     (t.id < TRILHA.length ? ' e liberar o próximo.' : '.') + '</p>' +
     (st.melhorDesafio ? '<div class="tiny" style="margin-bottom:8px">Melhor resultado: <b>'+st.melhorDesafio+'%</b> · '+
@@ -5758,6 +6108,7 @@ function telaNivel(args){
   });
   $('btnTutorial').onclick = function(){ tutorialDoNivel(t); };
   $('btnPratica').onclick = function(){ iniciarSessao({ nivel:t, modo:'pratica' }); };
+  if($('btnLista')) $('btnLista').onclick = function(){ iniciarSessao({ nivel:t, modo:'lista', cap:t.cap }); };
   $('btnDesafio').onclick = function(){ if(praticaOk) iniciarSessao({ nivel:t, modo:'desafio' }); };
 }
 
@@ -6781,9 +7132,13 @@ var SESSAO = null;
 
 function iniciarSessao(cfg){
   var topicos = cfg.nivel ? cfg.nivel.topicos : null;
+  var total;
+  if(cfg.modo==='desafio') total = cfg.nivel.metaDesafio;
+  else if(cfg.modo==='revisao') total = Math.min(6, S.revisao.length);
+  else if(cfg.modo==='lista') total = (cfg.cap ? listasDoCap(cfg.cap) : LISTAS).length;
+  else total = 8;
   SESSAO = {
-    cfg:cfg, i:0, acertos:0,
-    total: cfg.modo==='desafio' ? cfg.nivel.metaDesafio : (cfg.modo==='revisao' ? Math.min(6, S.revisao.length) : 8),
+    cfg:cfg, i:0, acertos:0, total:total,
     topicos:topicos, erradas:[]
   };
   MODO_ATUAL = cfg.nivel ? 'nivel' : MODO_ATUAL;
@@ -6796,7 +7151,10 @@ function proximaDaSessao(){
   if(!s) return;
   if(s.i >= s.total) return fimDaSessao();
   var q;
-  if(s.cfg.modo==='revisao'){
+  if(s.cfg.modo==='lista'){
+    // a lista do livro vem na ordem original, como no caderno
+    q = questaoLista(s.cfg.cap, s.i);
+  } else if(s.cfg.modo==='revisao'){
     q = gerarQuestaoDeRevisao();
     if(!q) return fimDaSessao();
   } else {
@@ -6808,7 +7166,9 @@ function proximaDaSessao(){
       q = qr || gerarQuestao(topico, nivelNum);
     } else q = gerarQuestao(topico, nivelNum);
   }
-  var titulo = s.cfg.modo==='desafio' ? 'Desafio' : (s.cfg.modo==='revisao' ? 'Revisão' : 'Prática');
+  var titulo = s.cfg.modo==='desafio' ? 'Desafio'
+             : (s.cfg.modo==='revisao' ? 'Revisão'
+             : (s.cfg.modo==='lista' ? 'Lista do livro' : 'Prática'));
   var cab = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">' +
     '<button class="btn sm gh" id="sairSessao">&larr; Sair</button>' +
     '<b>'+titulo+(s.cfg.nivel?' · '+esc(s.cfg.nivel.nome):'')+'</b>' +
@@ -6830,6 +7190,7 @@ function proximaDaSessao(){
   $('sairSessao').onclick = function(){
     SESSAO = null;
     if(s.cfg.nivel) irPara('nivel', { id:s.cfg.nivel.id });
+    else if(s.cfg.modo==='lista') irPara('listas');
     else irPara('trilha');
   };
 }
@@ -6839,13 +7200,15 @@ function fimDaSessao(){
   if(!s) return;
   var pct = Math.round(s.acertos/Math.max(1,s.total)*100);
   var html = '<div class="card center">' +
-    '<h2>'+(s.cfg.modo==='desafio' ? 'Desafio concluído' : (s.cfg.modo==='revisao' ? 'Revisão concluída' : 'Prática concluída'))+'</h2>' +
+    '<h2>'+(s.cfg.modo==='desafio' ? 'Desafio concluído'
+          : (s.cfg.modo==='revisao' ? 'Revisão concluída'
+          : (s.cfg.modo==='lista' ? 'Lista concluída' : 'Prática concluída')))+'</h2>' +
     '<div style="font-size:40px;font-weight:700;color:'+(pct>=70?'#4ade80':(pct>=40?'#fbbf24':'#fb7185'))+'">'+pct+'%</div>' +
     '<p class="sub">'+s.acertos+' de '+s.total+' questões</p>';
 
   if(s.cfg.nivel){
     var st = trilhaDe(s.cfg.nivel.id);
-    if(s.cfg.modo==='pratica'){
+    if(s.cfg.modo==='pratica' || s.cfg.modo==='lista'){
       st.pratica += s.acertos;
       salvar();
       html += '<p>Progresso da prática: <b>'+Math.min(st.pratica, s.cfg.nivel.metaPratica)+'/'+s.cfg.nivel.metaPratica+'</b></p>';
@@ -6885,6 +7248,7 @@ function fimDaSessao(){
   $('dvolta').onclick = function(){
     SESSAO = null;
     if(s.cfg.nivel) irPara('nivel', { id:s.cfg.nivel.id });
+    else if(s.cfg.modo==='lista') irPara('listas');
     else irPara('trilha');
   };
 }
@@ -7354,7 +7718,8 @@ var SIM = null;
 var SIM_TOPICOS = ['nome','nome_produto','produto_adicao','produto_eliminacao','produto_substituicao',
                    'produto_oxidacao','nox','dirigencia','isomeros','condicao','inverso','teste',
                    'sequencia','markovnikov','saytzeff','classe_funcao','pares',
-                   'conceito','conceito19','conceito20','conceito21','conceito22','conceito23'];
+                   'conceito','conceito19','conceito20','conceito21','conceito22','conceito23',
+                   'lista','lista19','lista20','lista21','lista22','lista23'];
 
 function telaSimulado(){
   if(SIM && !SIM.fim) return rodarSimulado();
@@ -7731,6 +8096,40 @@ function rodarAutoteste(){
     })(), '0');
   t('tabela de funções completa', FUNCOES.length >= 15, 'true');
   t('teoria dos capítulos 19 a 23', CONCEITOS.length >= 40, 'true');
+  t('listas do livro', LISTAS.length >= 30, 'true');
+  [19,20,21,22,23].forEach(function(cp){
+    t('lista do capítulo '+cp, listasDoCap(cp).length >= 4, 'true');
+  });
+  t('questões da lista bem formadas', (function(){
+      var ruins = 0;
+      LISTAS.forEach(function(l){
+        if(!l.q || !l.exp || !l.ops || l.ops.length<3) ruins++;
+        if(l.certa===undefined || !l.ops[l.certa]) ruins++;
+        if(new Set(l.ops).size !== l.ops.length) ruins++;
+        if(l.sm){ try { if(!M.valid(smiles(l.sm))) ruins++; } catch(e){ ruins++; } }
+      });
+      return ruins;
+    })(), '0');
+  // o motor tem de concordar com o gabarito das questões de contagem
+  t('FUVEST 2,2-dimetilbutano: 3 monoclorados',
+    (rodarReacao('halogenacao_alcano', smiles('CC(C)(C)CC'), {X:'Cl'})||{}).isomeros, '3');
+  t('UEPB 2,4-dimetilpentano: 3 monoclorados',
+    (rodarReacao('halogenacao_alcano', smiles('CC(C)CC(C)C'), {X:'Cl'})||{}).isomeros, '3');
+  t('UNIMONTES pentano: 3 monoclorados',
+    (rodarReacao('halogenacao_alcano', smiles('CCCCC'), {X:'Cl'})||{}).isomeros, '3');
+  t('UNIMONTES: só o 2-cloropentano é quiral',
+    monoSubst(smiles('CCCCC'),'Cl').filter(function(p){ return chiralCarbons(p.mol).length; })
+      .map(function(p){ return iupacName(p.mol); }).join(','), '2-cloropentano');
+  t('MACKENZIE: 2-metilbut-1-eno dá metanal e butanona',
+    (function(){
+      var r = rodarReacao('ozonolise', smiles('C=C(C)CC'));
+      return r.produtos.filter(function(p){ return p.mol; }).map(produtoNome).sort().join(' + ');
+    })(), 'butanona + metanal');
+  t('UFMG: 2-metilbut-2-eno na oxidação branda',
+    (function(){
+      var r = rodarReacao('oxidacao_branda', smiles('CC(C)=CC'));
+      return r.produtos.filter(function(p){ return p.mol; }).map(produtoNome).join(' + ');
+    })(), '2-metilbutano-2,3-diol');
   [19,20,21,22,23].forEach(function(cp){
     t('capítulo '+cp+' tem teoria', conceitosDoCap(cp).length >= 5, 'true');
   });

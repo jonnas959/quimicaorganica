@@ -38,10 +38,12 @@ Cada nível tem teoria, tutorial guiado passo a passo, prática com dicas e um d
 
 **Simulado** aplica de 10 a 15 questões misturadas, com cronômetro e sem dicas, seguidas de correção comentada e diagnóstico dos pontos fracos.
 
+**Listas do livro** traz 38 questões das atividades que acompanham os capítulos — FUVEST, UNICAMP, MACKENZIE, UEPB, UFRJ, UECE, PUC-SP e outras — com resolução comentada, capítulo por capítulo ou tudo misturado.
+
 **Livro de regras** é a referência pesquisável, disponível a qualquer momento.
 
 ## Sob o capô
 
 Não usa nenhuma biblioteca. O motor químico é próprio: as moléculas são grafos de átomos com hidrogênios implícitos, desenhados em SVG; o nomeador IUPAC tem rotas separadas para cadeia aberta, ciclo e aromático; as 44 reações são regras declarativas que transformam o grafo; e uma canonicalização por refinamento de cores é o que permite contar isômeros por hidrogênios equivalentes e conferir a molécula que o aluno desenhou.
 
-**Ctrl+Shift+T** abre um painel de autoteste com 95 verificações químicas — útil para conferir que nada quebrou depois de mexer no código.
+**Ctrl+Shift+T** abre um painel de autoteste com 108 verificações químicas — útil para conferir que nada quebrou depois de mexer no código.
