@@ -668,12 +668,21 @@ var FG_PRIO = {
 
 function groupsOf(m){
   var gs = [], ring = findRing(m), benz = ring && isBenzeneRing(m, ring) ? ring : null;
-  function add(t, ats, rot){ gs.push({ tipo:t, atoms:ats, rotulo:rot, prio:FG_PRIO[t]||0 }); }
+  function add(t, ats, rot){
+    var g = { tipo:t, atoms:ats, rotulo:rot, prio:FG_PRIO[t]||0, classe:0 };
+    gs.push(g);
+    return g;
+  }
 
   for(var i=0;i<m.atoms.length;i++){
     var el = m.atoms[i].el;
     if(el==='NO2'){ add('nitro', [i], 'nitrocomposto'); continue; }
-    if(HALO[el]){ add('haleto', [i], 'haleto orgânico'); continue; }
+    if(HALO[el]){
+      var cDoX = M.nbrIdx(m,i).filter(function(j){ return m.atoms[j].el==='C'; });
+      var gx = add('haleto', [i], 'haleto orgânico');
+      if(cDoX.length){ gx.classe = carbonClass(m, cDoX[0]); gx.atoms.push(cDoX[0]); }
+      continue;
+    }
     if(el!=='C') continue;
 
     var nb = M.nbrs(m,i);
@@ -704,7 +713,7 @@ function groupsOf(m){
       var oi = sglO[k].j;
       if(M.h(m,oi)===1){
         if(benz && benz.indexOf(i)>=0) add('fenol', [i,oi], 'fenol');
-        else add('alcool', [i,oi], 'álcool ' + carbonClassShort(carbonClass(m,i)));
+        else add('alcool', [i,oi], 'álcool ' + carbonClassShort(carbonClass(m,i))).classe = carbonClass(m,i);
       } else {
         var other = M.nbrs(m,oi).filter(function(x){ return x.j!==i; });
         if(other.length) { if(i < other[0].j) add('eter', [i, oi, other[0].j], 'éter'); }
@@ -716,7 +725,7 @@ function groupsOf(m){
       var isAmida = M.nbrs(m,ni).some(function(x){
         return m.atoms[x.j].el==='C' && M.nbrs(m,x.j).some(function(y){ return m.atoms[y.j].el==='O' && y.o===2; });
       });
-      if(!isAmida) add('amina', [i, ni], 'amina ' + carbonClassShort(M.cNbrs(m,ni).length));
+      if(!isAmida) add('amina', [i, ni], 'amina ' + carbonClassShort(M.cNbrs(m,ni).length)).classe = M.cNbrs(m,ni).length;
     }
   }
 
@@ -1156,7 +1165,10 @@ function buildName(m, ch, fgType, fg, anchorN, opt){
     var needParen = /[\-]/.test(base) && mult; // ex.: bis(terc-butil) — simplificado
     var locTxt = locs.join(',');
     var txt;
-    if(nome.indexOf('N-')===0) txt = locs.map(function(){ return 'N-'+base; }).join('-');
+    if(nome.indexOf('N-')===0){
+      // dois radicais iguais no nitrogênio: "N,N-dimetil", não "N-metil-N-metil"
+      txt = locs.map(function(){ return 'N'; }).join(',') + '-' + mult + base;
+    }
     else txt = locTxt + '-' + mult + base;
     return { key:alphaKey(base), txt:txt, minLoc:(locs[0]==='N'?0:locs[0]) };
   }).sort(function(a,b){
@@ -3578,6 +3590,54 @@ function aplicarFuncao(m, tipo){
   return mm;
 }
 
+// Gera um álcool / haleto de classe 1°, 2° ou 3°, ou uma amina primária,
+// secundária ou terciária. É o que alimenta o treino de classificação.
+function gerarClassificado(tipo, classe){
+  if(tipo==='amina'){
+    for(var t=0;t<50;t++){
+      var m = M.make();
+      var n = M.addAtom(m,'N');
+      for(var k=0;k<classe;k++){
+        var tam = 1 + rnd(3), prev = n;
+        for(var i=0;i<tam;i++){
+          var c = M.addAtom(m,'C');
+          M.addBond(m, prev, c, 1);
+          prev = c;
+        }
+      }
+      if(!M.valid(m)) continue;
+      var g = groupsOf(m).filter(function(x){ return x.tipo==='amina'; })[0];
+      if(!g || g.classe!==classe) continue;
+      var nome = iupacName(m);
+      if(!nome || nome==='—' || /undefined|NaN/.test(nome)) continue;
+      return m;
+    }
+    return smiles(['CCN','CCNC','CCN(C)C'][classe-1]);
+  }
+  for(var tent=0; tent<80; tent++){
+    var nC = Math.max(classe+1, 2 + rnd(5));
+    var esq = randomSkeleton(nC, 2);
+    var cands = M.carbons(esq).filter(function(c){
+      return carbonClass(esq,c)===classe && M.h(esq,c)>=1;
+    });
+    if(!cands.length) continue;
+    var mm = M.clone(esq), alvo = pick(cands);
+    if(tipo==='alcool') attach(mm, alvo, 'OH');
+    else attach(mm, alvo, pick(['Cl','Br','I']));
+    if(!M.valid(mm)) continue;
+    var gg = groupsOf(mm).filter(function(x){ return x.tipo===tipo; })[0];
+    if(!gg || gg.classe!==classe) continue;
+    var nm = iupacName(mm);
+    if(!nm || nm==='—' || /undefined|NaN/.test(nm)) continue;
+    return mm;
+  }
+  var reserva = {
+    alcool:['CCCO','CCC(O)C','CC(C)(C)O'],
+    haleto:['CCCCl','CCC(Cl)C','CC(C)(Cl)C']
+  };
+  return smiles(reserva[tipo][classe-1]);
+}
+
 function gerarMolecula(nivel, forcarTipo){
   var cfg = NIVEL_CFG[Math.min(Math.max(nivel,1), NIVEL_CFG.length-1)];
   for(var tent=0; tent<60; tent++){
@@ -3689,6 +3749,19 @@ var LIVRO = [
 { cat:'Fundamentos', tit:'Nomes: formato novo e formato antigo', tags:'formato antigo novo but-2-eno 2-buteno',
   txt:'O formato atual coloca o número junto do sufixo: <b>but-2-eno</b>, <b>propan-2-ol</b>, <b>pentan-2-ona</b>. O formato antigo joga o número para a frente: <b>2-buteno</b>, <b>2-propanol</b>, <b>2-pentanona</b>. Os dois estão certos e o jogo aceita os dois. O localizador é omitido quando só existe uma posição possível: propeno, etanol, butanona, propanona.',
   ex:'CC=CC', exTxt:'but-2-eno = 2-buteno.' },
+
+{ cat:'Fundamentos', tit:'Como reconhecer cada função', tags:'funcao grupo funcional reconhecer identificar alcool aldeido cetona ester eter amina amida',
+  txt:'Procure primeiro o <b>heteroátomo</b> (O, N ou halogênio) e veja exatamente a quem ele está ligado:<ul class="tight"><li><b>O com H</b>, em carbono saturado → <b>álcool</b>; preso ao anel aromático → <b>fenol</b></li><li><b>O entre dois carbonos</b>, sem H → <b>éter</b></li><li><b>C=O na ponta</b> da cadeia → <b>aldeído</b>; <b>no meio</b>, entre dois carbonos → <b>cetona</b></li><li><b>C=O com OH</b> no mesmo carbono → <b>ácido carboxílico</b>; se o H do OH virou carbono → <b>éster</b></li><li><b>N sem carbonila</b> ao lado → <b>amina</b>; <b>N colado num C=O</b> → <b>amida</b></li><li><b>C≡N</b> → <b>nitrila</b>; <b>–NO₂</b> → <b>nitrocomposto</b></li><li>só C e H → hidrocarboneto: veja se há dupla (alceno), tripla (alcino), anel aromático ou nada (alcano)</li></ul>',
+  ex:'CC(=O)OCC', exTxt:'Carbonila seguida de oxigênio ligado a outro carbono: éster (etanoato de etila).' },
+
+{ cat:'Fundamentos', tit:'Álcool, haleto e amina: 1°, 2° e 3°', tags:'classificacao alcool primario secundario terciario amina haleto grau',
+  txt:'<b>Álcool e haleto</b> se classificam pelo <b>carbono que segura o grupo</b>: se esse carbono está ligado a 1, 2 ou 3 outros carbonos, o álcool (ou o haleto) é primário, secundário ou terciário.<br><b>Amina é diferente:</b> conte quantos <b>carbonos estão presos ao NITROGÊNIO</b> — 1 é primária, 2 é secundária, 3 é terciária.<br>Isso não é decoreba à toa: é essa classificação que decide se o álcool oxida e até onde.',
+  ex:'CCC(O)C', exTxt:'Butan-2-ol: o carbono do OH tem 2 carbonos vizinhos, então é álcool secundário — oxida a cetona.',
+  peg:'Metanol (CH₃OH) é considerado primário, mesmo tendo zero carbonos vizinhos. E cuidado para não classificar a amina pelo carbono: nela a conta é no nitrogênio.' },
+
+{ cat:'Fundamentos', tit:'Funções que se confundem', tags:'confusao aldeido cetona acido ester alcool eter amina amida nitrila nitro fenol',
+  txt:'<ul class="tight"><li><b>Aldeído × cetona</b> — carbonila na ponta (com H) contra carbonila no meio. Só o aldeído dá positivo em Tollens e Fehling.</li><li><b>Ácido × éster</b> — depois do C=O vem OH (ácido) ou O ligado a carbono (éster). Só o ácido efervesce com bicarbonato.</li><li><b>Álcool × éter</b> — O com H na ponta contra O entre dois carbonos. Só o álcool borbulha com sódio.</li><li><b>Amina × amida</b> — o N está ou não colado a uma carbonila.</li><li><b>Nitrila × nitrocomposto</b> — C≡N contra –NO₂. Os nomes parecem; as estruturas não.</li><li><b>Fenol × álcool</b> — OH grudado no anel contra OH a um carbono de distância. Só o fenol reage com NaOH.</li></ul>',
+  ex:'CCC=O', exTxt:'Propanal: a carbonila está na ponta e o carbono dela tem hidrogênio — aldeído, não cetona.' },
 
 { cat:'Fundamentos', tit:'Número de oxidação do carbono', tags:'nox oxidacao numero carbono calcular',
   txt:'Olhe UM carbono de cada vez e some:<ul class="tight"><li>cada ligação com <b>H</b> → <b>−1</b></li><li>cada ligação com <b>C</b> → <b>0</b></li><li>cada ligação com <b>O, N ou halogênio</b> → <b>+1</b> (uma dupla C=O vale +2)</li></ul>O carbono é o único elemento que aparece com Nox diferente em cada posição da mesma molécula — por isso se calcula carbono por carbono.',
@@ -3853,8 +3926,8 @@ var CONQUISTAS = [
 var TRILHA = [
   { id:1, nome:'Fundamentos', res:'Montar, nomear e classificar',
     desc:'Antes de qualquer reação: saber ler a estrutura, dar o nome, classificar cada carbono e calcular o Nox.',
-    topicos:['nome','funcao','classe','nox'],
-    teoria:['Classificação dos carbonos','Cadeia principal e numeração','Prioridade das funções (quem vira sufixo)','Nomes: formato novo e formato antigo','Número de oxidação do carbono','Carbono quiral e mistura racêmica'],
+    topicos:['nome','funcao','classe','classe_funcao','pares','grupo','nox'],
+    teoria:['Classificação dos carbonos','Como reconhecer cada função','Álcool, haleto e amina: 1°, 2° e 3°','Funções que se confundem','Cadeia principal e numeração','Prioridade das funções (quem vira sufixo)','Nomes: formato novo e formato antigo','Número de oxidação do carbono','Carbono quiral e mistura racêmica'],
     tutorial:'fundamentos', metaPratica:6, metaDesafio:6 },
 
   { id:2, nome:'Adição', res:'Markovnikov, peróxido e anéis tensionados',
@@ -4053,8 +4126,73 @@ var TOPICO_NOME = {
   markovnikov:'Markovnikov', saytzeff:'Saytzeff', isomeros:'Isômeros de monossubstituição',
   dirigencia:'Dirigência no benzeno', teste:'Testes de identificação', inverso:'Reação inversa',
   condicao:'Condição de reação', tautomeria:'Enol e tautomeria', sequencia:'Sequência de reações',
-  quiral:'Carbono quiral', nome_produto:'Nome do produto'
+  quiral:'Carbono quiral', nome_produto:'Nome do produto',
+  classe_funcao:'Álcool/amina/haleto 1°, 2° ou 3°', pares:'Funções que se confundem',
+  grupo:'Grupo funcional', acharGrupo:'Achar o grupo na estrutura'
 };
+
+/* ---- tabela das funções orgânicas (usada no treino e na referência) ---- */
+var FUNCOES = [
+  { f:'alcano',             grupo:'só C e H, ligações simples', geral:'CₙH₂ₙ₊₂', suf:'-ano',
+    sm:'CCC', ex:'propano', dica:'Nenhum grupo funcional: só carbono e hidrogênio, tudo ligação simples.' },
+  { f:'alceno',             grupo:'C=C',        geral:'CₙH₂ₙ',   suf:'-eno',
+    sm:'CC=CC', ex:'but-2-eno', dica:'Uma ligação DUPLA entre carbonos.' },
+  { f:'alcino',             grupo:'C≡C',        geral:'CₙH₂ₙ₋₂', suf:'-ino',
+    sm:'CC#C', ex:'propino', dica:'Uma ligação TRIPLA entre carbonos.' },
+  { f:'haleto orgânico',    grupo:'–F, –Cl, –Br, –I', geral:'R–X', suf:'prefixo halo-',
+    sm:'CCC(Br)C', ex:'2-bromobutano', dica:'Halogênio preso a carbono. Classifica-se pelo carbono que o segura: 1°, 2° ou 3°.' },
+  { f:'álcool',             grupo:'–OH em carbono saturado', geral:'R–OH', suf:'-ol',
+    sm:'CCC(O)C', ex:'butan-2-ol', dica:'OH preso a carbono SATURADO. Classifica-se pelo carbono do OH: 1°, 2° ou 3°.' },
+  { f:'fenol',              grupo:'–OH no anel aromático', geral:'Ar–OH', suf:'nome próprio',
+    sm:'OC1=CC=CC=C1', ex:'fenol', dica:'OH ligado DIRETAMENTE ao anel benzênico. Se houver um carbono no meio, é álcool.' },
+  { f:'éter',               grupo:'–O– entre dois carbonos', geral:'R–O–R', suf:'prefixo alcóxi',
+    sm:'CCOCC', ex:'etoxietano', dica:'Oxigênio ENTRE dois carbonos, sem hidrogênio nele.' },
+  { f:'aldeído',            grupo:'–CHO',       geral:'R–CHO',   suf:'-al',
+    sm:'CCC=O', ex:'propanal', dica:'Carbonila na PONTA da cadeia: o carbono do C=O tem hidrogênio.' },
+  { f:'cetona',             grupo:'–CO–',       geral:'R–CO–R',  suf:'-ona',
+    sm:'CC(=O)CC', ex:'butanona', dica:'Carbonila no MEIO da cadeia, entre dois carbonos.' },
+  { f:'ácido carboxílico',  grupo:'–COOH',      geral:'R–COOH',  suf:'ácido ...oico',
+    sm:'CC(=O)O', ex:'ácido etanoico', dica:'Carbonila com OH no mesmo carbono, sempre na ponta.' },
+  { f:'éster',              grupo:'–COO–',      geral:'R–COO–R', suf:'...oato de ...ila',
+    sm:'CC(=O)OCC', ex:'etanoato de etila', dica:'Como o ácido, mas o H do OH foi trocado por um carbono. É o cheiro das frutas.' },
+  { f:'amina',              grupo:'–NH₂, –NH–, –N<', geral:'R–NH₂', suf:'-amina',
+    sm:'CCN', ex:'etanamina', dica:'Nitrogênio SEM carbonila ao lado. Classifica-se por quantos carbonos estão no N: 1ª, 2ª ou 3ª.' },
+  { f:'amida',              grupo:'–CONH₂',     geral:'R–CONH₂', suf:'-amida',
+    sm:'CC(N)=O', ex:'etanamida', dica:'Nitrogênio ligado a um carbono de CARBONILA. É o que forma a ligação peptídica das proteínas.' },
+  { f:'nitrila',            grupo:'–C≡N',       geral:'R–CN',    suf:'-nitrila',
+    sm:'CCC#N', ex:'propanonitrila', dica:'Tripla ligação entre carbono e nitrogênio.' },
+  { f:'nitrocomposto',      grupo:'–NO₂',       geral:'R–NO₂',   suf:'prefixo nitro-',
+    sm:'{NO2}C1=CC=CC=C1', ex:'nitrobenzeno', dica:'Nitrogênio com DOIS oxigênios. Não confunda com nitrila.' },
+  { f:'aromático',          grupo:'anel benzênico', geral:'C₆H₆', suf:'nome próprio',
+    sm:'CC1=CC=CC=C1', ex:'tolueno', dica:'Anel de 6 carbonos com duplas alternadas — muito estável, por isso faz substituição.' },
+  { f:'cíclico',            grupo:'anel saturado', geral:'CₙH₂ₙ', suf:'ciclo-',
+    sm:'C1CCCCC1', ex:'ciclo-hexano', dica:'Anel fechado só de ligações simples. Anéis de 3 e 4 carbonos abrem em reações de adição.' }
+];
+function funcInfo(nome){
+  var base = String(nome).replace(/\s+\d°$/,'');
+  for(var i=0;i<FUNCOES.length;i++) if(FUNCOES[i].f===base) return FUNCOES[i];
+  return null;
+}
+
+/* ---- pares que os alunos mais trocam ---- */
+var PARES_CONFUSOS = [
+  { a:{ sm:'CCC=O', f:'aldeído' }, b:{ sm:'CC(=O)CC', f:'cetona' },
+    dica:'Olhe ONDE está a carbonila: na ponta da cadeia (com hidrogênio no carbono) é aldeído; entre dois carbonos é cetona. Só o aldeído dá positivo em Tollens e Fehling.' },
+  { a:{ sm:'CCC(=O)O', f:'ácido carboxílico' }, b:{ sm:'CC(=O)OCC', f:'éster' },
+    dica:'Depois do C=O, veja o que vem: se for OH, é ácido; se for um O ligado a outro carbono, é éster. O ácido efervesce com bicarbonato, o éster não.' },
+  { a:{ sm:'CCCO', f:'álcool' }, b:{ sm:'CCOC', f:'éter' },
+    dica:'Oxigênio com hidrogênio, na ponta, é álcool; oxigênio ENTRE dois carbonos é éter. Só o álcool borbulha com sódio metálico.' },
+  { a:{ sm:'CCCN', f:'amina' }, b:{ sm:'CCC(N)=O', f:'amida' },
+    dica:'Se o nitrogênio estiver colado num carbono de carbonila (C=O), é amida. Sem carbonila ao lado, é amina.' },
+  { a:{ sm:'CCC#N', f:'nitrila' }, b:{ sm:'{NO2}CCC', f:'nitrocomposto' },
+    dica:'Nitrila é C≡N — tripla com nitrogênio. Nitrocomposto é –NO₂ — nitrogênio carregando dois oxigênios. Os nomes parecem, as estruturas não.' },
+  { a:{ sm:'OC1=CC=CC=C1', f:'fenol' }, b:{ sm:'OCC1=CC=CC=C1', f:'álcool' },
+    dica:'OH grudado no anel aromático é fenol; com um carbono entre o anel e o OH, volta a ser álcool. O fenol reage com NaOH, o álcool não.' },
+  { a:{ sm:'C1=CC=CC=C1', f:'aromático' }, b:{ sm:'C1CCCCC1', f:'cíclico' },
+    dica:'O anel aromático tem duplas alternadas e é estável demais para fazer adição — faz substituição. O ciclano de 6 carbonos é saturado.' }
+];
+
+function questaoIsomeros_marcador(){}
 
 function opc(txt, certa, erro, mol){
   return { txt:txt, certa:!!certa, erro:erro||null, mol:mol||null };
@@ -4226,6 +4364,112 @@ var RX_POR_TOPICO = {
   tautomeria:['hidratacao_alcino'],
   ozonolise:['ozonolise','oxidacao_energica']
 };
+
+/* ---- Álcool, amina e haleto: 1°, 2° ou 3° ---- */
+function questaoClassificarFuncao(nivel){
+  var tipo = pick(['alcool','alcool','haleto','amina']);   // álcool cai mais em prova
+  var classe = 1 + rnd(3);
+  var m = gerarClassificado(tipo, classe);
+  var g = groupsOf(m).filter(function(x){ return x.tipo===tipo; })[0];
+  if(!g) return questaoClassificarFuncao(nivel);
+  classe = g.classe;
+
+  var nomes = tipo==='amina'
+    ? ['amina primária','amina secundária','amina terciária']
+    : (tipo==='alcool' ? ['álcool primário','álcool secundário','álcool terciário']
+                       : ['haleto primário','haleto secundário','haleto terciário']);
+  var comoConta = tipo==='amina'
+    ? 'Na amina a conta é diferente: olhe quantos CARBONOS estão presos ao NITROGÊNIO.'
+    : 'Conte quantos carbonos estão ligados ao carbono que segura o grupo.';
+  var porque = tipo==='amina'
+    ? 'O nitrogênio está ligado a <b>'+classe+'</b> carbono(s), então é uma <b>'+nomes[classe-1]+'</b>.'
+    : 'O carbono que segura o grupo está ligado a <b>'+classe+'</b> outro(s) carbono(s), então é um <b>'+nomes[classe-1]+'</b>.';
+  var consequencia = {
+    alcool:{ 1:'Álcool primário oxida a aldeído e depois a ácido carboxílico.',
+             2:'Álcool secundário oxida a cetona — e para aí.',
+             3:'Álcool terciário NÃO oxida: falta hidrogênio no carbono do OH.' },
+    haleto:{ 1:'Haletos primários tendem à substituição.',
+             2:'Haletos secundários ficam no meio do caminho entre substituição e eliminação.',
+             3:'Haletos terciários tendem à eliminação e formam o carbocátion mais estável.' },
+    amina:{ 1:'Amina primária: um só carbono no nitrogênio.',
+            2:'Amina secundária: dois carbonos no nitrogênio.',
+            3:'Amina terciária: três carbonos no nitrogênio, sem hidrogênio sobrando nele.' }
+  }[tipo][classe];
+
+  var ops = shuffle(nomes.map(function(n,i){
+    return opc(n, i+1===classe, comoConta);
+  }));
+  return {
+    topico:'classe_funcao', tipo:'escolha', mol:m, opcoes:ops,
+    highlight:g.atoms,
+    enunciado:'Como se classifica '+(tipo==='amina'?'esta amina':(tipo==='alcool'?'este álcool':'este haleto'))+'?',
+    explica:porque+'<br>'+consequencia,
+    dicas:[comoConta,
+           tipo==='amina' ? 'Siga os traços que saem do N e conte só os que vão para carbono.'
+                          : 'Ache primeiro o carbono que segura o grupo — está destacado.',
+           'São '+classe+'.'],
+    xp:12
+  };
+}
+
+/* ---- funções que se confundem ---- */
+function questaoPares(nivel){
+  var par = pick(PARES_CONFUSOS);
+  var lado = Math.random()<0.5 ? par.a : par.b;
+  var outro = lado===par.a ? par.b : par.a;
+  var m = smiles(lado.sm);
+  var extras = shuffle(FUNCOES.map(function(f){ return f.f; })
+    .filter(function(f){ return f!==lado.f && f!==outro.f; })).slice(0,2);
+  var ops = shuffle([
+    opc(lado.f, true),
+    opc(outro.f, false, par.dica),
+    opc(extras[0], false, 'Essa função exigiria outro grupo na estrutura.'),
+    opc(extras[1], false, 'Essa função exigiria outro grupo na estrutura.')
+  ]);
+  var info = funcInfo(lado.f);
+  return {
+    topico:'pares', tipo:'escolha', mol:m, opcoes:ops,
+    enunciado:'Qual é a função desta molécula?',
+    explica:'É <b>'+esc(lado.f)+'</b>'+(info?' — grupo '+esc(info.grupo):'')+'.<br>'+par.dica,
+    dicas:['Ache o heteroátomo (O ou N) e veja exatamente a quem ele está ligado.',
+           par.dica.split('.')[0]+'.',
+           'A resposta é '+lado.f+'.'],
+    xp:12
+  };
+}
+
+/* ---- associação função ↔ grupo funcional ---- */
+function questaoGrupo(nivel){
+  var alvo = pick(FUNCOES.filter(function(f){ return f.f!=='alcano'; }));
+  var inverso = Math.random()<0.5;
+  var outros = shuffle(FUNCOES.filter(function(f){ return f.f!==alvo.f && f.grupo!==alvo.grupo; })).slice(0,3);
+  if(inverso){
+    var ops = shuffle([opc(alvo.grupo, true)].concat(outros.map(function(f){
+      return opc(f.grupo, false, 'Esse é o grupo do(a) '+f.f+'.');
+    })));
+    return {
+      topico:'grupo', tipo:'escolha', mol:smiles(alvo.sm), escondeMol:true, opcoes:ops,
+      enunciado:'Qual grupo funcional caracteriza <b>'+esc(alvo.f)+'</b>?',
+      explica:'<b>'+esc(alvo.f)+'</b> → grupo <b>'+esc(alvo.grupo)+'</b> ('+esc(alvo.geral)+'), sufixo <b>'+esc(alvo.suf)+'</b>.<br>'+esc(alvo.dica)+'<br>Exemplo: '+esc(alvo.ex)+'.',
+      dicas:['Pense no exemplo mais comum dessa função.',
+             esc(alvo.dica),
+             'O grupo é '+esc(alvo.grupo)+'.'],
+      xp:10
+    };
+  }
+  var ops2 = shuffle([opc(alvo.f, true)].concat(outros.map(function(f){
+    return opc(f.f, false, 'O grupo do(a) '+f.f+' é '+f.grupo+'.');
+  })));
+  return {
+    topico:'grupo', tipo:'escolha', mol:smiles(alvo.sm), escondeMol:true, opcoes:ops2,
+    enunciado:'O grupo <b>'+esc(alvo.grupo)+'</b> caracteriza qual função?',
+    explica:'<b>'+esc(alvo.grupo)+'</b> → <b>'+esc(alvo.f)+'</b>, sufixo <b>'+esc(alvo.suf)+'</b>. Exemplo: '+esc(alvo.ex)+'.<br>'+esc(alvo.dica),
+    dicas:['Lembre do sufixo que esse grupo gera no nome.',
+           esc(alvo.dica),
+           'É '+esc(alvo.f)+'.'],
+    xp:10
+  };
+}
 
 function questaoProduto(topico, nivel, rxForcada, tentativa){
   var ids = RX_POR_TOPICO[topico] || RX_POR_TOPICO.produto_adicao;
@@ -4560,6 +4804,9 @@ function gerarQuestao(topico, nivel){
     case 'condicao': return questaoCondicao(nivel);
     case 'sequencia': return questaoSequencia(nivel);
     case 'nome_produto': return questaoNomeProduto(nivel);
+    case 'classe_funcao': return questaoClassificarFuncao(nivel);
+    case 'pares': return questaoPares(nivel);
+    case 'grupo': return questaoGrupo(nivel);
     case 'markovnikov': case 'saytzeff': case 'tautomeria':
     case 'produto_adicao': case 'produto_eliminacao':
     case 'produto_substituicao': case 'produto_oxidacao':
@@ -4643,6 +4890,7 @@ function atualizarHeader(){
 /* ---- navegação ---- */
 var MODOS = [
   { id:'trilha',        nome:'Trilha' },
+  { id:'funcoes',       nome:'Funções' },
   { id:'construtor',    nome:'Construtor' },
   { id:'aleatoria',     nome:'Molécula aleatória' },
   { id:'laboratorio',   nome:'Laboratório' },
@@ -4665,6 +4913,7 @@ function irPara(modo, args){
   renderNav();
   switch(modo){
     case 'trilha': telaTrilha(args); break;
+    case 'funcoes': telaFuncoes(args); break;
     case 'construtor': telaConstrutor(args); break;
     case 'aleatoria': telaAleatoria(args); break;
     case 'laboratorio': telaLaboratorio(args); break;
@@ -4733,6 +4982,11 @@ function posicionarBolha(r, p, bub){
 function fecharSpot(){ $('spot').classList.remove('on'); }
 
 var TUTORIAIS = {
+  funcoes:[
+    { titulo:'Treino de funções', txt:'<p>Antes de prever qualquer reação é preciso bater o olho e saber que função é. Este modo treina só isso.</p>' },
+    { alvo:'#funAbas', titulo:'Seis treinos', txt:'<p><b>Reconhecer</b> a função pela estrutura · <b>1°, 2° ou 3°</b> para álcool, haleto e amina · <b>Achar na estrutura</b> tocando no grupo · <b>Pares que confundem</b> (aldeído com cetona, ácido com éster) · <b>Grupo ↔ função</b> · e a <b>Tabela</b> de consulta.</p>' },
+    { alvo:'#funDesc', titulo:'Comece pela tabela', txt:'<p>Se ainda não decorou os grupos, abra a aba <b>Tabela</b> primeiro: ela mostra cada função desenhada, com o grupo, a fórmula geral e o sufixo.</p>' }
+  ],
   construtor:[
     { titulo:'Este é o construtor', txt:'<p>Aqui você monta qualquer molécula e o jogo devolve, em tempo real, nome IUPAC, fórmulas, classificação dos carbonos, Nox e as reações possíveis.</p>' },
     { alvo:'#svgWrap', titulo:'Toque em um átomo', txt:'<p>Toque num átomo do desenho para <b>selecioná-lo</b>. O que você fizer depois acontece nele.</p><p class="tiny">Faça isto agora: toque em um carbono.</p>' },
@@ -5482,6 +5736,217 @@ function painelCB(){
                (r.pos?'positivo':'negativo')+'</span> <span class="tiny">'+esc(r.obs)+'</span></td></tr>';
       }).join('') + '</table></div>';
   }
+}
+/* ============================================================================
+   TELA: FUNÇÕES ORGÂNICAS
+   Treino específico de reconhecimento e classificação — álcool, aldeído,
+   cetona e o resto — que é o que trava o aluno antes das reações.
+   Seis abas: reconhecer, classificar 1°/2°/3°, achar o grupo na estrutura,
+   pares que se confundem, grupo ↔ função, e a tabela de referência.
+   ========================================================================== */
+
+var FUN = { aba:'reconhecer', acertos:0, total:0, alvo:null };
+
+var FUN_ABAS = [
+  { id:'reconhecer',  nome:'Reconhecer' },
+  { id:'classificar', nome:'1°, 2° ou 3°' },
+  { id:'achar',       nome:'Achar na estrutura' },
+  { id:'pares',       nome:'Pares que confundem' },
+  { id:'grupos',      nome:'Grupo ↔ função' },
+  { id:'tabela',      nome:'Tabela' }
+];
+
+function telaFuncoes(args){
+  if(args && args.aba) FUN.aba = args.aba;
+  var pct = FUN.total ? Math.round(FUN.acertos/FUN.total*100) : 0;
+
+  var html = '<div class="card">' +
+    '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">' +
+      '<h2 style="margin:0">Funções orgânicas</h2>' +
+      '<span class="sub">reconhecer o grupo antes de prever a reação</span>' +
+      '<span style="flex:1"></span>' +
+      (FUN.total ? '<span class="chip '+(pct>=70?'ok':(pct>=40?'wa':'no'))+'">'+FUN.acertos+'/'+FUN.total+' nesta sessão</span>' : '') +
+    '</div>' +
+    '<div class="viewtabs" id="funAbas" style="margin-top:10px">' +
+      FUN_ABAS.map(function(a){
+        return '<button data-fa="'+a.id+'"'+(a.id===FUN.aba?' class="on"':'')+'>'+esc(a.nome)+'</button>';
+      }).join('') +
+    '</div>' +
+    '<div class="tiny" id="funDesc"></div>' +
+    '</div><div id="funArea"></div>';
+
+  render(html);
+  qsa('[data-fa]').forEach(function(b){
+    b.onclick = function(){ FUN.aba = b.getAttribute('data-fa'); telaFuncoes(); };
+  });
+
+  var descs = {
+    reconhecer:'Olhe a estrutura e diga que função é. É o passo que decide todo o resto.',
+    classificar:'Álcool e haleto se classificam pelo carbono que segura o grupo; amina, por quantos carbonos estão no nitrogênio.',
+    achar:'Toque no átomo do grupo funcional. Serve para treinar o olho antes da prova.',
+    pares:'As trocas mais comuns: aldeído com cetona, ácido com éster, álcool com éter, amina com amida.',
+    grupos:'A associação que precisa estar na ponta da língua: grupo, função e sufixo.',
+    tabela:'Referência completa. Fica aqui sempre que precisar consultar.'
+  };
+  $('funDesc').textContent = descs[FUN.aba] || '';
+
+  if(FUN.aba==='tabela') return tabelaFuncoes();
+  if(FUN.aba==='achar') return acharGrupoNovo();
+  questaoDeFuncoes();
+}
+
+function questaoDeFuncoes(){
+  var q;
+  switch(FUN.aba){
+    case 'classificar': q = questaoClassificarFuncao(4); break;
+    case 'pares': q = questaoPares(4); break;
+    case 'grupos': q = questaoGrupo(4); break;
+    default: q = questaoFuncao(5);
+  }
+  renderQuestao(q, $('funArea'), {
+    textoProximo:'Próxima',
+    aoResponder:function(acertou){
+      FUN.total++;
+      if(acertou) FUN.acertos++;
+    },
+    aoProximo:function(){ telaFuncoes(); }
+  });
+}
+
+/* ---- achar o grupo funcional tocando na estrutura ---- */
+var GRUPO_ROTULO = {
+  alcool:'álcool', fenol:'fenol', eter:'éter', aldeido:'aldeído', cetona:'cetona',
+  acido:'ácido carboxílico', ester:'éster', amina:'amina', amida:'amida',
+  nitrila:'nitrila', nitro:'nitrocomposto', haleto:'haleto orgânico',
+  alceno:'alceno', alcino:'alcino', aromatico:'aromático'
+};
+
+function acharGrupoNovo(){
+  var m = null, g = null;
+  for(var t=0;t<60 && !g;t++){
+    m = Math.random()<0.45 ? doBanco().mol : gerarMolecula(5 + rnd(2));
+    var cands = groupsOf(m).filter(function(x){ return GRUPO_ROTULO[x.tipo] && x.atoms.length; });
+    if(cands.length) g = cands[0];
+  }
+  if(!g){ m = smiles('CCC(O)C'); g = groupsOf(m)[0]; }
+  FUN.alvo = { mol:m, grupo:g, respondido:false };
+  pintarAcharGrupo();
+}
+
+function pintarAcharGrupo(){
+  var a = FUN.alvo, m = a.mol, g = a.grupo;
+  var rot = GRUPO_ROTULO[g.tipo] || g.rotulo;
+  var html = '<div class="card">' +
+    '<h3>Toque no átomo do grupo que caracteriza <span class="hl">'+esc(rot)+'</span> nesta molécula</h3>' +
+    '<div id="agMol"></div>' +
+    '<div id="agFb"></div>' +
+    '<div class="btnrow" style="margin-top:10px">' +
+      '<button class="btn sm gh" id="agDica">Dica</button>' +
+      '<button class="btn '+(a.respondido?'pri':'gh')+'" id="agProx">Outra molécula</button>' +
+      '<span style="flex:1"></span><span class="chip">'+esc(iupacName(m))+'</span>' +
+    '</div></div>';
+  $('funArea').innerHTML = html;
+
+  $('agMol').innerHTML = '<div class="molbox clickable">' +
+    molSVG(m, { click:true, maxH:250, highlight:a.respondido ? g.atoms : [] }) + '</div>';
+  qsa('#agMol .atomhit').forEach(function(el){
+    el.onclick = function(){ tocouAtomo(parseInt(el.getAttribute('data-atom'),10)); };
+  });
+  $('agProx').onclick = acharGrupoNovo;
+  $('agDica').onclick = function(){
+    var info = funcInfo(rot);
+    $('agFb').innerHTML = '<div class="fb tip"><b>Dica</b>' +
+      esc(info ? info.dica : 'Procure o heteroátomo — oxigênio, nitrogênio ou halogênio.') + '</div>';
+  };
+}
+
+function tocouAtomo(i){
+  var a = FUN.alvo;
+  if(a.respondido) return;
+  var m = a.mol, g = a.grupo;
+  var certo = g.atoms.indexOf(i) >= 0;
+  a.respondido = true;
+  FUN.total++;
+  if(certo) FUN.acertos++;
+  registrarTopico('acharGrupo', certo);
+  if(certo) darXP(10);
+
+  var rot = GRUPO_ROTULO[g.tipo] || g.rotulo;
+  var info = funcInfo(rot);
+  var oQueE = descreverAtomo(m, i);
+  var html = '<div class="fb '+(certo?'ok':'no')+'">' +
+    '<b>'+(certo ? 'Isso · +10 XP' : 'Não é esse átomo')+'</b>' +
+    '<div class="why">' +
+      (certo ? '' : 'Você tocou em '+esc(oQueE)+'.<br>') +
+      'O grupo do(a) <b>'+esc(rot)+'</b> está destacado: ' + esc(info ? info.grupo : g.rotulo) + '.' +
+      (info ? '<br>'+esc(info.dica) : '') +
+    '</div></div>';
+  $('agFb').innerHTML = html;
+  pintarAcharGrupoDestacado();
+}
+
+function pintarAcharGrupoDestacado(){
+  var a = FUN.alvo;
+  var fb = $('agFb').innerHTML;
+  pintarAcharGrupo();
+  $('agFb').innerHTML = fb;
+}
+
+function descreverAtomo(m, i){
+  var el = m.atoms[i].el;
+  if(el==='C'){
+    var cls = carbonClass(m,i);
+    return 'um carbono ' + (cls ? carbonClassName(cls) : 'isolado') + ' com ' + M.h(m,i) + ' hidrogênio(s)';
+  }
+  if(el==='O') return M.h(m,i)===1 ? 'um oxigênio com hidrogênio (OH)' : 'um oxigênio sem hidrogênio';
+  if(el==='N') return 'um nitrogênio';
+  if(el==='NO2') return 'o grupo nitro';
+  if(HALO[el]) return 'um halogênio (' + el + ')';
+  return 'o átomo ' + el;
+}
+
+/* ---- tabela de referência ---- */
+function tabelaFuncoes(){
+  var html = '<div class="card"><h3>As funções orgânicas</h3>' +
+    '<p class="sub">Grupo funcional, fórmula geral, o que vira sufixo no nome e um exemplo desenhado.</p>' +
+    '<div class="grid g2" style="margin-top:10px">' +
+    FUNCOES.map(function(f){
+      return '<div class="card" style="background:var(--panel2);padding:11px">' +
+        '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">' +
+          '<b style="font-size:15px">'+esc(f.f)+'</b>' +
+          '<span class="chip ac">'+esc(f.grupo)+'</span>' +
+          '<span style="flex:1"></span>' +
+          '<span class="tiny">'+esc(f.geral)+'</span>' +
+        '</div>' +
+        '<div style="max-width:250px;margin:8px 0">'+molCard(smiles(f.sm), { maxH:105 })+'</div>' +
+        '<div class="tiny"><b>'+esc(f.ex)+'</b> · sufixo <b>'+esc(f.suf)+'</b></div>' +
+        '<div class="sub" style="margin-top:5px;font-size:12.5px">'+esc(f.dica)+'</div>' +
+        '</div>';
+    }).join('') + '</div></div>';
+
+  html += '<div class="card"><h3>Ordem de prioridade</h3>' +
+    '<p class="sub">Quando há mais de uma função na mesma molécula, só a de maior prioridade vira sufixo; as outras viram prefixo.</p>' +
+    '<div class="chips" style="margin-top:8px">' +
+    ['ácido carboxílico','éster','amida','nitrila','aldeído','cetona','álcool','amina','éter','alceno/alcino']
+      .map(function(f,i){ return '<span class="chip'+(i<3?' ac':'')+'">'+(i+1)+'. '+esc(f)+'</span>'; }).join('') +
+    '</div>' +
+    '<div class="tiny" style="margin-top:8px">Haleto, nitro e grupo alquila nunca viram sufixo — são sempre prefixo.</div></div>';
+
+  html += '<div class="card"><h3>As três classificações que caem sempre</h3>' +
+    '<div class="grid g3" style="margin-top:8px">' +
+      '<div><h4>Carbono</h4><div class="sub" style="font-size:13px">Conte os CARBONOS vizinhos: 1 = primário, 2 = secundário, 3 = terciário, 4 = quaternário.</div></div>' +
+      '<div><h4>Álcool e haleto</h4><div class="sub" style="font-size:13px">Classifique pelo carbono que segura o OH (ou o halogênio). Álcool 1° oxida a aldeído e depois a ácido; 2° a cetona; 3° não oxida.</div></div>' +
+      '<div><h4>Amina</h4><div class="sub" style="font-size:13px">Aqui a conta muda: veja quantos CARBONOS estão presos ao NITROGÊNIO — 1, 2 ou 3.</div></div>' +
+    '</div>' +
+    '<div class="btnrow" style="margin-top:12px">' +
+      '<button class="btn" data-ir-aba="classificar">Treinar 1°, 2° e 3°</button>' +
+      '<button class="btn gh" data-ir-aba="achar">Treinar achar o grupo</button>' +
+    '</div></div>';
+
+  $('funArea').innerHTML = html;
+  qsa('[data-ir-aba]').forEach(function(b){
+    b.onclick = function(){ FUN.aba = b.getAttribute('data-ir-aba'); telaFuncoes(); };
+  });
 }
 /* ============================================================================
    COMPONENTE DE QUESTÃO — usado por prática, desafio, revisão, aleatória,
@@ -6250,7 +6715,7 @@ function veredito(i){
 var SIM = null;
 var SIM_TOPICOS = ['nome','nome_produto','produto_adicao','produto_eliminacao','produto_substituicao',
                    'produto_oxidacao','nox','dirigencia','isomeros','condicao','inverso','teste',
-                   'sequencia','markovnikov','saytzeff'];
+                   'sequencia','markovnikov','saytzeff','classe_funcao','pares'];
 
 function telaSimulado(){
   if(SIM && !SIM.fim) return rodarSimulado();
@@ -6588,9 +7053,9 @@ function rodarAutoteste(){
     } catch(e){ falhasGer++; }
   }
   t('gerador: 45 moléculas válidas e nomeáveis', falhasGer, '0');
-  var topicosTeste = ['nome','nome_produto','funcao','classe','nox','quiral','isomeros','dirigencia','teste',
-                      'inverso','condicao','sequencia','markovnikov','saytzeff','tautomeria','produto_adicao',
-                      'produto_eliminacao','produto_substituicao','produto_oxidacao'];
+  var topicosTeste = ['nome','nome_produto','funcao','classe','classe_funcao','pares','grupo','nox','quiral',
+                      'isomeros','dirigencia','teste','inverso','condicao','sequencia','markovnikov','saytzeff',
+                      'tautomeria','produto_adicao','produto_eliminacao','produto_substituicao','produto_oxidacao'];
   topicosTeste.forEach(function(tp){
     try {
       var q = gerarQuestao(tp, 4);
@@ -6603,7 +7068,30 @@ function rodarAutoteste(){
       if(!q.dicas || q.dicas.length<3) falhasQ++;
     } catch(e){ falhasQ++; }
   });
-  t('questões: 19 tópicos bem formados', falhasQ, '0');
+  t('questões: 22 tópicos bem formados', falhasQ, '0');
+
+  // classificação de funções
+  t('álcool 1°', groupsOf(smiles('CCCO')).filter(function(g){ return g.tipo==='alcool'; })[0].classe, '1');
+  t('álcool 2°', groupsOf(smiles('CCC(O)C')).filter(function(g){ return g.tipo==='alcool'; })[0].classe, '2');
+  t('álcool 3°', groupsOf(smiles('CC(C)(C)O')).filter(function(g){ return g.tipo==='alcool'; })[0].classe, '3');
+  t('amina primária', groupsOf(smiles('CCN')).filter(function(g){ return g.tipo==='amina'; })[0].classe, '1');
+  t('amina secundária', groupsOf(smiles('CCNC')).filter(function(g){ return g.tipo==='amina'; })[0].classe, '2');
+  t('amina terciária', groupsOf(smiles('CCN(C)C')).filter(function(g){ return g.tipo==='amina'; })[0].classe, '3');
+  t('haleto 3°', groupsOf(smiles('CC(C)(Cl)C')).filter(function(g){ return g.tipo==='haleto'; })[0].classe, '3');
+  t('N,N-dimetiletanamina', nome('CCN(C)C'), 'N,N-dimetiletanamina');
+  t('gerador de classificados', (function(){
+      var erros = 0;
+      ['alcool','haleto','amina'].forEach(function(tp){
+        for(var c=1;c<=3;c++){
+          var mm = gerarClassificado(tp, c);
+          var gg = groupsOf(mm).filter(function(x){ return x.tipo===tp; })[0];
+          if(!gg || gg.classe!==c) erros++;
+        }
+      });
+      return erros;
+    })(), '0');
+  t('tabela de funções completa', FUNCOES.length >= 15, 'true');
+  t('pares que confundem', PARES_CONFUSOS.length >= 6, 'true');
 
   var reacoesSemErro = 0;
   RX.forEach(function(r){
