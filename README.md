@@ -4,38 +4,44 @@ Jogo web para aprender **reações orgânicas** — adição, eliminação, subs
 
 Tudo cabe em um único arquivo (`index.html`). Não tem servidor, não tem instalação, não tem conta: basta abrir. Depois de carregado uma vez, funciona **offline**, no computador e no celular.
 
+O conteúdo segue os **capítulos 19 a 23** do material de aula.
+
 ## Como usar em sala
 
 Abra o link, ou baixe o `index.html` e mande para os alunos — o arquivo funciona sozinho, inclusive sem internet. O progresso de cada aluno fica salvo no navegador dele e pode ser exportado em JSON pelo ícone de engrenagem.
 
-## Os seis modos
+## A trilha
 
-| Modo | O que o aluno faz |
+| Nível | Conteúdo |
 |---|---|
-| **Trilha** | Seis níveis, do básico à integração. Cada um tem teoria, tutorial guiado, prática e um desafio que libera o próximo. |
-| **Construtor** | Monta qualquer molécula tocando na tela e vê na hora o nome IUPAC, as fórmulas, a classificação de cada carbono, o Nox, os carbonos quirais e a lista de reações que aquela estrutura pode sofrer. |
-| **Molécula aleatória** | O jogo sorteia uma estrutura do nível escolhido e pergunta nome, função, classificação, Nox, testes e isômeros. |
-| **Laboratório** | Escolhe reagente e condição e prevê o produto principal — escolhendo entre quatro alternativas ou **desenhando o produto** no construtor. Ao errar, vê a regra que faltou, o mecanismo e o produto se formando passo a passo. |
-| **Reação inversa** | Recebe os produtos e descobre o composto de partida — o raciocínio que a prova cobra na ozonólise e na oxidação enérgica. |
-| **Identificação** | Recebe um frasco desconhecido e escolhe testes de bancada (água de bromo, Baeyer, Tollens, Fehling, dicromato, sódio, NaOH, bicarbonato, chama) para descobrir o que é com o menor número de testes. |
-| **Simulado** | De 10 a 15 questões misturadas, com cronômetro e sem dicas, seguidas de correção comentada e diagnóstico dos pontos fracos. |
+| **Fundamentos** | Reconhecer funções, classificar álcool/haleto/amina em 1°, 2° e 3°, carbonos α e β, nomenclatura IUPAC, Nox, carbono quiral |
+| **Cap. 19 — Adição** | Markovnikov, efeito Kharasch (peróxido), Sabatier-Senderens, adição cis, ordens de reatividade, alcinos, enol e tautomeria, dienos 1,2 e 1,4, HCN, polimerização |
+| **Cap. 20 — Substituição em alcanos** | Mecanismo radicalar, reatividade 3° > 2° > 1°, contagem de isômeros, nitração, sulfonação, haletos e nucleófilos, teoria das tensões de Baeyer |
+| **Cap. 21 — Aromáticos** | Halogenação, nitração, sulfonação, Friedel-Crafts, dirigência orto-para e meta, ativantes e desativantes, exceções do benzeno, tolueno no anel ou na cadeia lateral |
+| **Cap. 22 — Oxirredução** | Ozonólise, oxidação branda (Baeyer), oxidação enérgica, ciclanos e aromáticos, oxidação de álcoois, bafômetro, Tollens e Fehling, combustão, reduções |
+| **Cap. 23 — Eliminação e ésteres** | Regra de Zaitsev, carbonos α e β, 140 °C e 170 °C, desidro-halogenação, esterificação e a pegadinha do O-18, hidrólise |
+| **Sabões e integração** | Saponificação, sabão duro e mole, tensoativos, micelas, água dura, detergentes, biodiesel por transesterificação, sequências de reações |
 
-Há ainda um **livro de regras** pesquisável com todo o conteúdo, disponível a qualquer momento.
+Cada nível tem teoria, tutorial guiado passo a passo, prática com dicas e um desafio que libera o próximo.
 
-## Conteúdo coberto
+## Os modos
 
-**Nomenclatura** — cadeia principal, numeração pelos menores localizadores, prioridade de funções, prefixos em ordem alfabética. Aceita o formato atual (`but-2-eno`) e o antigo (`2-buteno`), além dos nomes comuns.
+**Treinar** reúne os treinos livres:
 
-**Adição** — Markovnikov, anti-Markovnikov (peróxido, só com HBr), hidrogenação, halogenação, hidratação, alcinos consumindo 2 mols, enol e tautomeria, dienos conjugados 1,2 e 1,4, abertura de ciclos tensionados, polimerização.
+- **Funções** — reconhecer a função, classificar em 1°/2°/3°, achar o grupo tocando na estrutura, os pares que mais se confundem (aldeído com cetona, ácido com éster, álcool com éter, amina com amida), a associação grupo ↔ função e uma tabela com as 17 funções desenhadas
+- **Nomenclatura e leitura** — molécula sorteada, com perguntas de nome IUPAC, função, classificação, Nox, testes e isômeros
+- **Laboratório de reações** — escolher reagente e condição e prever o produto principal, marcando a alternativa ou **desenhando o produto** no construtor
+- **Reação inversa** — dos produtos de volta ao reagente
+- **Identificação de frasco** — nove testes de bancada para descobrir um líquido desconhecido
 
-**Eliminação** — Saytzeff, desidratação a 140 °C e a 170 °C, KOH aquoso contra KOH alcoólico, desalogenação, desidrogenação.
+**Construtor** monta qualquer molécula por toque e devolve, em tempo real, nome IUPAC, fórmulas, classificação de cada carbono, Nox, carbonos quirais e a lista de reações que aquela estrutura pode sofrer.
 
-**Substituição** — reatividade 3° > 2° > 1°, contagem de isômeros de monossubstituição, as quatro reações do benzeno e as duas exceções, dirigência orto-para e meta, haletos com nucleófilos, esterificação (com a pegadinha do oxigênio-18), hidrólise e saponificação.
+**Simulado** aplica de 10 a 15 questões misturadas, com cronômetro e sem dicas, seguidas de correção comentada e diagnóstico dos pontos fracos.
 
-**Oxirredução** — Nox carbono a carbono, combustão balanceada, Baeyer, oxidação enérgica, ozonólise, oxidação de álcoois, bafômetro, Tollens e Fehling, reduções e as reações de dupla classificação.
+**Livro de regras** é a referência pesquisável, disponível a qualquer momento.
 
 ## Sob o capô
 
-Não usa nenhuma biblioteca. O motor químico é próprio: as moléculas são grafos de átomos com hidrogênios implícitos, desenhados em SVG; o nomeador IUPAC tem rotas separadas para cadeia aberta, ciclo e aromático; as reações são regras declarativas que transformam o grafo; e uma canonicalização por refinamento de cores é o que permite contar isômeros por hidrogênios equivalentes e conferir a molécula que o aluno desenhou.
+Não usa nenhuma biblioteca. O motor químico é próprio: as moléculas são grafos de átomos com hidrogênios implícitos, desenhados em SVG; o nomeador IUPAC tem rotas separadas para cadeia aberta, ciclo e aromático; as 44 reações são regras declarativas que transformam o grafo; e uma canonicalização por refinamento de cores é o que permite contar isômeros por hidrogênios equivalentes e conferir a molécula que o aluno desenhou.
 
-**Ctrl+Shift+T** abre um painel de autoteste com 76 verificações químicas — útil para conferir que nada quebrou depois de mexer no código.
+**Ctrl+Shift+T** abre um painel de autoteste com 95 verificações químicas — útil para conferir que nada quebrou depois de mexer no código.

@@ -661,7 +661,7 @@ function chiralCarbons(m){
 /* ---- detecção de funções orgânicas ---------------------------------------- */
 // Devolve {tipo, atoms:[...], rotulo, sufixoPrioridade}
 var FG_PRIO = {
-  acido:100, ester:95, amida:90, nitrila:85, aldeido:80, cetona:75,
+  acido:100, anidrido:97, ester:95, amida:90, nitrila:85, aldeido:80, cetona:75,
   alcool:70, fenol:68, amina:60, eter:50, alcino:40, alceno:38, dieno:37,
   nitro:20, haleto:15, aromatico:10, ciclano:6, alcano:5
 };
@@ -695,7 +695,15 @@ function groupsOf(m){
       if(sglO.length){
         var o = sglO[0].j;
         var oC = M.cNbrs(m,o).filter(function(x){ return x.j!==i; });
-        if(oC.length) add('ester', [i, o, dblO[0].j, oC[0].j], 'éster');
+        if(oC.length){
+          // se o outro lado do oxigênio também é carbonila, é anidrido, não éster
+          var outroC = oC[0].j;
+          var outraCarbonila = M.nbrs(m,outroC).some(function(x){
+            return m.atoms[x.j].el==='O' && x.o===2;
+          });
+          if(outraCarbonila){ if(i < outroC) add('anidrido', [i, o, outroC, dblO[0].j], 'anidrido'); }
+          else add('ester', [i, o, dblO[0].j, outroC], 'éster');
+        }
         else add('acido', [i, o, dblO[0].j], 'ácido carboxílico');
       } else if(Ns.length && Ns[0].o===1){
         add('amida', [i, Ns[0].j, dblO[0].j], 'amida');
@@ -801,7 +809,7 @@ function esc(s){
 
 var ROOT = ['','met','et','prop','but','pent','hex','hept','oct','non','dec','undec','dodec'];
 var MULT = ['','','di','tri','tetra','penta','hexa'];
-var SUFFIX_ORDER = ['acido','ester','amida','nitrila','aldeido','cetona','alcool','amina'];
+var SUFFIX_ORDER = ['acido','anidrido','ester','amida','nitrila','aldeido','cetona','alcool','amina'];
 // Sufixos que ficam obrigatoriamente no carbono 1 (não recebem localizador)
 var SUF_C1 = { acido:1, ester:1, amida:1, nitrila:1, aldeido:1 };
 var SUF_TXT = { alcool:'ol', cetona:'ona', aldeido:'al', acido:'oico', ester:'oato',
@@ -945,8 +953,10 @@ function nameAcyclic(m, opt){
   var gs = groupsOf(m);
   var blocked = opt.blocked || [];
 
-  // Éster tem estrutura de nome própria: "<acila>ato de <alquila>ila"
+  // Éster e anidrido têm formatos de nome próprios
   if(!opt.asRadical){
+    var ag = firstOf(gs,'anidrido');
+    if(ag) return nameAnidrido(m, ag);
     var eg = firstOf(gs,'ester');
     if(eg) return nameEster(m, eg);
   }
@@ -1182,7 +1192,7 @@ function buildName(m, ch, fgType, fg, anchorN, opt){
   // Substituinte único numa cadeia em que só há uma posição possível:
   // "cloroetano", "metoximetano", "etoxietano" — e não "1-cloroetano".
   var omitSub = prefList.length===1 && ch.subs.length===1 && descritores===0
-                && Math.ceil(n/2)===1 && !opt.asRadical;
+                && Math.ceil(n/2)===1;
   if(omitSub) prefList[0].txt = prefList[0].txt.replace(/^\d+-/,'');
   var prefixos = prefList.map(function(p){ return p.txt; }).join('-');
 
@@ -1213,8 +1223,10 @@ function buildName(m, ch, fgType, fg, anchorN, opt){
   if(!fgType){
     sufPart = 'o';
   } else if(fgType==='acido'){
+    // diácido: "ácido hexanodioico" (as duas pontas com COOH)
     prefixoPalavra = 'ácido ';
-    sufPart = 'oico';
+    var nAcidos = (ch.fgLocs && ch.fgLocs.length) ? ch.fgLocs.length : 1;
+    sufPart = nAcidos>1 ? 'o' + (MULT[nAcidos]||'') + 'oico' : 'oico';
     if(ch.ins.n===0) insPart = 'an';
   } else if(fgType==='aldeido'){
     sufPart = 'al';
@@ -1234,14 +1246,15 @@ function buildName(m, ch, fgType, fg, anchorN, opt){
     }
   }
 
+  if(opt.asRadical){
+    // radical: raiz + "il", mantendo os prefixos ("clorometil", "2-hidroxietil")
+    var corpoR = (raiz + (ch.ins.n ? insPart : '') + 'il').replace(/--/g,'-');
+    return (prefixos ? prefixos + corpoR : corpoR);
+  }
   var corpo = raiz + insPart + sufPart;
   // ajustes ortográficos: "butan"+"ona" → butanona ; "but"+"-2-en"+"-1-ol"
   corpo = corpo.replace(/--/g,'-');
   var nome = (prefixos ? prefixos + corpo : corpo);
-  if(opt.asRadical){
-    // radical: troca a terminação por "il"
-    return nome.replace(/o$/,'') + 'il';
-  }
   return prefixoPalavra + nome;
 }
 
@@ -1251,6 +1264,16 @@ function distinctPositions(n, kind){
   if(kind==='alcool' || kind==='amina') return Math.ceil(n/2);
   if(kind==='cetona') return Math.ceil((n-2)/2);
   return 1;
+}
+
+/* ---- anidrido ---- */
+function nameAnidrido(m, g){
+  var C1 = g.atoms[0], O = g.atoms[1], C2 = g.atoms[2];
+  var lado1 = cutSide(m, O, C2, C1);     // cada lado, isolado, vira um ácido
+  var lado2 = cutSide(m, O, C1, C2);
+  var n1 = nameAcyclic(lado1.mol).replace(/^ácido\s+/,'');
+  var n2 = nameAcyclic(lado2.mol).replace(/^ácido\s+/,'');
+  return n1===n2 ? 'anidrido ' + n1 : 'anidrido ' + n1 + '-' + n2;
 }
 
 /* ---- éster ---- */
@@ -2073,7 +2096,7 @@ function produtoNome(p){
 var RX = [];
 
 RX.push({
-  id:'hidrogenacao', grupo:'Adição', nome:'Hidrogenação catalítica',
+  id:'hidrogenacao', grupo:'Adição', nome:'Hidrogenação catalítica (Sabatier-Senderens)',
   reagente:'H₂', condicao:'Ni ou Pt/Pd, Δ',
   classes:['Adição','Redução'],
   aplica:function(m){
@@ -2097,7 +2120,7 @@ RX.push({
         produtos:[P(pa,'principal')],
         regra:'Adição de H₂ à dupla',
         porque:'A dupla se rompe (uma ligação pi), cada carbono recebe um H e a cadeia fica saturada. É adição e, ao mesmo tempo, redução: o Nox dos carbonos da dupla diminui.',
-        mecanismo:'H₂ é quebrado na superfície do níquel; os dois H entram pela mesma face da dupla.'
+        mecanismo:'H₂ é quebrado na superfície do níquel; os dois H entram pela MESMA face da dupla — é uma adição CIS (sin). Por isso a hidrogenação parcial de um alcino dá o isômero cis.'
       };
     }
     if(cb.length){
@@ -2145,7 +2168,7 @@ RX.push({
       return {
         produtos:[P(p,'principal')],
         regra:'Di-haleto vicinal',
-        porque:'Os dois halogênios entram em carbonos VIZINHOS (vicinal), um em cada carbono da antiga dupla. Não existe Markovnikov aqui: os dois grupos que entram são iguais.',
+        porque:'Os dois halogênios entram em carbonos VIZINHOS (vicinal), um em cada carbono da antiga dupla. Não existe Markovnikov aqui: os dois grupos que entram são iguais. A ordem de reatividade é Cl₂ > Br₂ > I₂ — o flúor reage de forma violenta demais e o iodo praticamente não reage.',
         mecanismo:'A dupla ataca a molécula de Br₂ formando um íon bromônio cíclico; o Br⁻ entra pelo lado oposto.',
         teste:'É este o teste da água de bromo: a cor castanha do Br₂ desaparece.'
       };
@@ -2186,6 +2209,7 @@ RX.push({
       var out = {
         produtos:[P(principal,'principal')],
         regra:'Regra de Markovnikov',
+        ordem:'Reatividade dos hidrácidos: HI > HBr > HCl.',
         porque:mk.simetrico
           ? 'Os dois carbonos da dupla têm o mesmo número de hidrogênios, então só existe um produto possível: a regra de Markovnikov não precisa ser usada.'
           : 'Markovnikov: o hidrogênio entra no carbono MAIS hidrogenado (o que já tem mais H) e o halogênio no menos hidrogenado. "Quem tem mais, ganha mais."',
@@ -2231,7 +2255,7 @@ RX.push({
 });
 
 RX.push({
-  id:'hbr_peroxido', grupo:'Adição', nome:'Adição anti-Markovnikov (efeito Kharasch)',
+  id:'hbr_peroxido', grupo:'Adição', nome:'Adição anti-Markovnikov (efeito Kharasch / peróxido)',
   reagente:'HBr', condicao:'na presença de peróxido (H₂O₂ ou R–O–O–R)',
   classes:['Adição'],
   aplica:function(m){ return dblCC(m).length>0; },
@@ -2310,6 +2334,38 @@ function tautomerize(m){
   }
   return { mol:mm, mudou:false };
 }
+
+RX.push({
+  id:'adicao_hcn', grupo:'Adição', nome:'Adição de HCN (adição nucleofílica)',
+  reagente:'HCN', condicao:'meio básico (catálise por CN⁻)',
+  classes:['Adição'],
+  aplica:function(m){ return carbonylCs(m).length>0 || triCC(m).length>0; },
+  run:function(m){
+    var cb = carbonylCs(m), tri = triCC(m);
+    if(cb.length){
+      var g = cb[0], C = g.atoms[0], O = g.atoms[1];
+      var mm = M.clone(m);
+      M.bond(mm, C, O).o = 1;      // C=O vira C–OH
+      attach(mm, C, 'CN');
+      return {
+        produtos:[P(mm,'principal','cianidrina')],
+        regra:'Adição nucleofílica à carbonila',
+        porque:'O carbono da carbonila tem carga parcial POSITIVA, porque o oxigênio puxa os elétrons. Por isso quem ataca é um nucleófilo — aqui o íon CN⁻. O CN entra no carbono e o H fica no oxigênio, formando uma CIANIDRINA (um composto com OH e C≡N no mesmo carbono).',
+        mecanismo:'O CN⁻ ataca o carbono da carbonila; o alcóxido formado pega o H⁺ do HCN.',
+        alvo:[C],
+        atencao:'Repare na diferença: no alceno a adição é ELETROFÍLICA (quem ataca primeiro é o H⁺); na carbonila é NUCLEOFÍLICA (quem ataca primeiro é o CN⁻). A cadeia ganha um carbono.'
+      };
+    }
+    var t = tri[0];
+    var p = addAcross(m, t.a, t.b, 'H', 'CN');
+    return {
+      produtos:[P(p,'principal')],
+      regra:'Adição de HCN ao alcino',
+      porque:'O HCN se adiciona à tripla. Com o etino o produto é o cianoeteno (acrilonitrila), matéria-prima das fibras acrílicas e do plástico ABS.',
+      alvo:[t.a, t.b]
+    };
+  }
+});
 
 RX.push({
   id:'dieno_conjugado', grupo:'Adição', nome:'Adição 1,2 e 1,4 em dieno conjugado',
@@ -2902,6 +2958,93 @@ RX.push({
 
 /* ---- ésteres ---- */
 RX.push({
+  id:'tolueno_lateral', grupo:'Substituição', nome:'Substituição na cadeia lateral do tolueno',
+  reagente:'Cl₂ ou Br₂', condicao:'LUZ e temperatura ALTA, sem catalisador',
+  classes:['Substituição'],
+  aplica:function(m){
+    var r = benzeneRing(m);
+    if(!r) return false;
+    return arilSubstituintes(m, r).some(function(s){
+      return m.atoms[s.j].el==='C' && M.h(m, s.j)>0;
+    });
+  },
+  run:function(m, opt){
+    var X = (opt && opt.X) || 'Cl';
+    var ring = benzeneRing(m);
+    var lat = arilSubstituintes(m, ring).filter(function(s){
+      return m.atoms[s.j].el==='C' && M.h(m, s.j)>0;
+    })[0];
+    var mm = M.clone(m);
+    attach(mm, lat.j, X);
+    // o produto do anel, para comparar
+    var noAnel = benzenoSubstituicao(m, X);
+    return {
+      produtos:[P(mm,'principal','substituição no carbono da cadeia lateral')],
+      regra:'Luz e calor → cadeia lateral; catalisador e frio → anel',
+      porque:'No tolueno a substituição pode acontecer em DOIS lugares, e quem decide são as condições:\n' +
+              '• com LUZ e temperatura ALTA, sem catalisador → o mecanismo é radicalar e o halogênio entra na CADEIA LATERAL (no –CH₃)\n' +
+              '• sem luz, a frio e COM catalisador (AlCl₃/FeCl₃) → o mecanismo é eletrofílico e o halogênio entra no ANEL, em orto e para',
+      mecanismo:'Radicalar: a luz quebra o X₂ em radicais, que arrancam um H do metil.',
+      alvo:[lat.j],
+      distratores: (noAnel && noAnel.produtos && noAnel.produtos[0] && noAnel.produtos[0].mol)
+        ? [{ mol:noAnel.produtos[0].mol, erro:'Esse é o produto da substituição NO ANEL — seria o certo com catalisador e sem luz.' }] : [],
+      atencao:'Essa é a pergunta clássica sobre o tolueno: leia se a questão fala em luz ou em catalisador antes de escolher onde o grupo entra.'
+    };
+  }
+});
+
+RX.push({
+  id:'transesterificacao', grupo:'Substituição', nome:'Transesterificação (alcoólise) — biodiesel',
+  reagente:'álcool (metanol ou etanol)', condicao:'catalisador básico (NaOH/KOH)',
+  classes:['Substituição'],
+  aplica:function(m){ return groupsOf(m).some(function(g){ return g.tipo==='ester'; }); },
+  run:function(m){
+    var g = groupsOf(m).filter(function(x){ return x.tipo==='ester'; })[0];
+    var C = g.atoms[0], O = g.atoms[1], R = g.atoms[3];
+    // troca o álcool do éster por metanol
+    var acila = cutSide(m, O, R, C);
+    var novo = M.clone(acila.mol);
+    var oIdx = null;
+    for(var i=0;i<novo.atoms.length;i++){
+      if(novo.atoms[i].el==='O' && M.h(novo,i)===1) oIdx = i;
+    }
+    if(oIdx!==null) attach(novo, oIdx, 'CH3');
+    var alco = cutSide(m, O, R, R);
+    var liberado = M.clone(alco.mol);
+    attach(liberado, alco.map[R], 'OH');
+    return {
+      produtos:[P(novo,'principal','novo éster — é isso que vira biodiesel'), P(liberado,'principal','álcool liberado')],
+      regra:'Éster + álcool → outro éster + outro álcool',
+      porque:'Na transesterificação o éster troca de álcool: entra o álcool novo e sai o que estava preso. É assim que se faz BIODIESEL — o óleo vegetal (um triéster do glicerol) reage com metanol ou etanol, e saem os ésteres do biodiesel mais GLICEROL como subproduto.',
+      mecanismo:'óleo vegetal + 3 CH₃OH → 3 ésteres metílicos (biodiesel) + glicerol',
+      atencao:'Não confunda: transesterificação troca o ÁLCOOL do éster (e dá biodiesel); saponificação usa BASE e dá sabão; hidrólise usa ÁGUA e devolve o ácido.'
+    };
+  }
+});
+
+RX.push({
+  id:'anidrido', grupo:'Eliminação', nome:'Desidratação de ácido carboxílico',
+  reagente:'P₂O₅ (desidratante)', condicao:'Δ, duas moléculas de ácido',
+  classes:['Eliminação'],
+  aplica:function(m){ return groupsOf(m).some(function(g){ return g.tipo==='acido'; }); },
+  run:function(m){
+    var g = groupsOf(m).filter(function(x){ return x.tipo==='acido'; })[0];
+    var C = g.atoms[0], Osimples = g.atoms[1];
+    var mm = M.clone(m);
+    var base = mm.atoms.length;
+    m.atoms.forEach(function(a){ M.addAtom(mm, a.el); });
+    m.bonds.forEach(function(b){ M.addBond(mm, base+b.a, base+b.b, b.o); });
+    M.addBond(mm, Osimples, base + C, 1);
+    M.delAtom(mm, base + Osimples);
+    return {
+      produtos:[P(mm,'principal','anidrido'), T('H₂O')],
+      regra:'Duas moléculas de ácido perdem uma água',
+      porque:'Duas moléculas de ácido carboxílico perdem uma molécula de água entre si e formam um ANIDRIDO — dois grupos acila ligados por um oxigênio. É o mesmo raciocínio da desidratação intermolecular de álcoois, que forma éter.'
+    };
+  }
+});
+
+RX.push({
   id:'esterificacao', grupo:'Substituição', nome:'Esterificação de Fischer',
   reagente:'álcool (etanol)', condicao:'H₂SO₄, Δ',
   classes:['Substituição'],
@@ -3011,8 +3154,22 @@ RX.push({
   id:'oxidacao_branda', grupo:'Oxirredução', nome:'Oxidação branda (reagente de Baeyer)',
   reagente:'KMnO₄ diluído', condicao:'a frio, meio neutro ou básico',
   classes:['Oxirredução','Adição'],
-  aplica:function(m){ return dblCC(m).length>0; },
+  aplica:function(m){ return dblCC(m).length>0 || triCC(m).length>0; },
   run:function(m){
+    if(!dblCC(m).length && triCC(m).length){
+      // no alcino as DUAS ligações pi se rompem: sai uma dicetona
+      var t = triCC(m)[0];
+      var mm = M.clone(m);
+      M.bond(mm, t.a, t.b).o = 1;
+      attach(mm, t.a, '=O');
+      attach(mm, t.b, '=O');
+      return {
+        produtos:[P(mm,'principal','dicetona')],
+        regra:'Alcino → dicetona',
+        porque:'A oxidação branda também funciona com alcino, mas aí se rompem as DUAS ligações pi da tripla, e cada carbono fica com um oxigênio: o produto é uma dicetona (duas carbonilas vizinhas). No alceno, com uma pi só, o produto é um diol.',
+        alvo:[t.a, t.b]
+      };
+    }
     var b = dblCC(m)[0];
     var p = addAcross(m, b.a, b.b, 'OH','OH');
     return {
@@ -3052,8 +3209,25 @@ RX.push({
   id:'oxidacao_energica', grupo:'Oxirredução', nome:'Oxidação enérgica',
   reagente:'KMnO₄ (ou K₂Cr₂O₇)', condicao:'meio ÁCIDO (H₂SO₄), a QUENTE',
   classes:['Oxirredução'],
-  aplica:function(m){ return dblCC(m).length>0 || (benzeneRing(m) && temCadeiaLateralOxidavel(m)); },
+  aplica:function(m){
+    return dblCC(m).length>0 || (benzeneRing(m) && temCadeiaLateralOxidavel(m)) || cicloOxidavel(m);
+  },
   run:function(m){
+    if(!dblCC(m).length && cicloOxidavel(m)){
+      // o anel se abre e as duas pontas viram COOH: ácido dicarboxílico
+      var anel = cicloOxidavel(m);
+      var mm = M.clone(m);
+      M.delBond(mm, anel[0], anel[1]);
+      attach(mm, anel[0], '=O'); attach(mm, anel[0], 'OH');
+      attach(mm, anel[1], '=O'); attach(mm, anel[1], 'OH');
+      return {
+        produtos:[P(mm,'principal','ácido dicarboxílico')],
+        regra:'Ciclano → ácido dicarboxílico',
+        porque:'O ciclano também sofre oxidação enérgica: o ANEL SE ABRE e as duas pontas viram –COOH. O produto é um ácido dicarboxílico, com o mesmo número de carbonos do anel.',
+        alvo:[anel[0], anel[1]],
+        atencao:'Não confunda com o anel aromático: esse resiste à oxidação, e quem é atacada é a cadeia lateral.'
+      };
+    }
     if(dblCC(m).length){
       var r = quebraDupla(m, 'energica');
       var partes = M.split(r.mol).filter(function(x){
@@ -3085,6 +3259,14 @@ RX.push({
     };
   }
 });
+
+// Ciclano saturado, sem grupo funcional, com 3 a 6 carbonos: oxida abrindo o anel
+function cicloOxidavel(m){
+  var r = findRing(m);
+  if(!r || isBenzeneRing(m, r)) return null;
+  if(!isPureAlcano(m)) return null;
+  return r;
+}
 
 function temCadeiaLateralOxidavel(m){
   var ring = benzeneRing(m);
@@ -3683,7 +3865,9 @@ function gerarParaReacao(rxId, nivel){
     combustao:'CCC', oxidacao_branda:'CC=CC', oxidacao_energica:'CC(C)=CC',
     ozonolise:'CC(C)=CC', oxidacao_alcool:'CCC(O)C', bafometro:'CCO',
     reducao_lialh4:'CC(=O)O', reducao_nitro:'{NO2}C1=CC=CC=C1', reducao_nitrila:'CC#N',
-    alcool_sodio:'CCO', fenol_naoh:'OC1=CC=CC=C1'
+    alcool_sodio:'CCO', fenol_naoh:'OC1=CC=CC=C1',
+    adicao_hcn:'CC(=O)C', tolueno_lateral:'CC1=CC=CC=C1',
+    transesterificacao:'CC(=O)OCC', anidrido:'CC(=O)O'
   };
   return smiles(fallback[rxId] || 'CC=CC');
 }
@@ -3924,40 +4108,46 @@ var CONQUISTAS = [
 
 /* ---------- trilha ---------- */
 var TRILHA = [
-  { id:1, nome:'Fundamentos', res:'Montar, nomear e classificar',
-    desc:'Antes de qualquer reação: saber ler a estrutura, dar o nome, classificar cada carbono e calcular o Nox.',
-    topicos:['nome','funcao','classe','classe_funcao','pares','grupo','nox'],
-    teoria:['Classificação dos carbonos','Como reconhecer cada função','Álcool, haleto e amina: 1°, 2° e 3°','Funções que se confundem','Cadeia principal e numeração','Prioridade das funções (quem vira sufixo)','Nomes: formato novo e formato antigo','Número de oxidação do carbono','Carbono quiral e mistura racêmica'],
+  { id:1, nome:'Fundamentos', res:'Funções, nomes, classificações e Nox', cap:null,
+    desc:'Antes de qualquer reação: reconhecer a função, dar o nome, classificar cada carbono e calcular o Nox.',
+    topicos:['funcao','classe_funcao','pares','grupo','nome','classe','nox'],
+    teoria:['Como reconhecer cada função','Álcool, haleto e amina: 1°, 2° e 3°','Funções que se confundem','Classificação dos carbonos','Carbono alfa (α) e carbono beta (β)','Cadeia principal e numeração','Prioridade das funções (quem vira sufixo)','Nomes: formato novo e formato antigo','Número de oxidação do carbono','Carbono quiral e mistura racêmica'],
     tutorial:'fundamentos', metaPratica:6, metaDesafio:6 },
 
-  { id:2, nome:'Adição', res:'Markovnikov, peróxido e anéis tensionados',
-    desc:'A dupla e a tripla abrem. Quem entra onde depende de quantos hidrogênios cada carbono tem.',
-    topicos:['produto_adicao','markovnikov','tautomeria'],
-    teoria:['Regra de Markovnikov','Anti-Markovnikov (peróxido, só HBr)','Hidrogenação catalítica','Hidratação de alcino: enol e tautomeria','Dieno conjugado: adição 1,2 e 1,4','Ciclanos pequenos abrem o anel','Polimerização por adição'],
-    tutorial:'adicao', metaPratica:6, metaDesafio:6 },
+  { id:2, nome:'Capítulo 19 — Adição', res:'Markovnikov, peróxido e anéis tensionados', cap:19,
+    desc:'A dupla e a tripla se abrem. Quem entra onde depende de quantos hidrogênios cada carbono tem.',
+    topicos:['produto_adicao','markovnikov','tautomeria','conceito19','nome_produto'],
+    teoria:['Regra de Markovnikov','Anti-Markovnikov (peróxido, só HBr)','Hidrogenação catalítica','Ordens de reatividade que caem em prova','Nomes próprios das reações','Hidratação de alcino: enol e tautomeria','Dieno conjugado: adição 1,2 e 1,4','Ciclanos pequenos abrem o anel','Polimerização por adição'],
+    tutorial:'adicao', metaPratica:6, metaDesafio:8 },
 
-  { id:3, nome:'Eliminação', res:'Saytzeff, 140/170 °C e KOH',
-    desc:'Sai gente da molécula e nasce uma dupla. O segredo é olhar a temperatura e o solvente.',
-    topicos:['produto_eliminacao','saytzeff','condicao'],
-    teoria:['Regra de Saytzeff','140 °C ou 170 °C: éter ou alceno','KOH aquoso × KOH alcoólico','Desalogenação e desidrogenação'],
-    tutorial:'eliminacao', metaPratica:6, metaDesafio:6 },
+  { id:3, nome:'Capítulo 20 — Substituição em alcanos', res:'3°>2°>1°, isômeros e ciclanos', cap:20,
+    desc:'Um grupo troca de lugar com um hidrogênio. Aqui manda a classe do carbono e a estabilidade do radical.',
+    topicos:['produto_substituicao','isomeros','conceito20'],
+    teoria:['Reatividade 3° > 2° > 1°','Contar isômeros de monossubstituição','Ordens de reatividade que caem em prova','Ciclanos pequenos abrem o anel','Haletos e nucleófilos'],
+    tutorial:'substituicao_alcano', metaPratica:6, metaDesafio:8 },
 
-  { id:4, nome:'Substituição', res:'3°>2°>1°, isômeros e dirigência',
-    desc:'Um grupo troca de lugar com um hidrogênio. Em alcano manda a classe do carbono; no benzeno manda quem já está no anel.',
-    topicos:['produto_substituicao','isomeros','dirigencia'],
-    teoria:['Reatividade 3° > 2° > 1°','Contar isômeros de monossubstituição','Dirigência no benzeno: orto-para × meta','As quatro reações do benzeno','As duas exceções do benzeno','Haletos e nucleófilos','Esterificação e a pegadinha do O-18','Hidrólise e saponificação'],
-    tutorial:'substituicao', metaPratica:8, metaDesafio:8 },
+  { id:4, nome:'Capítulo 21 — Aromáticos', res:'Dirigência, Friedel-Crafts e o tolueno', cap:21,
+    desc:'No benzeno quem manda é o grupo que já está no anel: ele decide onde o próximo entra e com que velocidade.',
+    topicos:['dirigencia','produto_substituicao','conceito21'],
+    teoria:['Dirigência no benzeno: orto-para × meta','Ativante e desativante: a velocidade da reação','As quatro reações do benzeno','As duas exceções do benzeno','Substituição no tolueno: anel ou cadeia lateral'],
+    tutorial:'substituicao', metaPratica:6, metaDesafio:8 },
 
-  { id:5, nome:'Oxirredução', res:'Nox, quebra de dupla e testes',
+  { id:5, nome:'Capítulo 22 — Oxirredução', res:'Nox, quebra de dupla e testes', cap:22,
     desc:'Carbono ganha ou perde elétrons. Aqui entram Baeyer, ozonólise, oxidação de álcool e os testes de bancada.',
-    topicos:['nox','produto_oxidacao','ozonolise','teste'],
-    teoria:['Oxidação branda (Baeyer)','Oxidação enérgica: conte os hidrogênios','Ozonólise','Oxidação de álcoois','Bafômetro','Tollens e Fehling','Combustão completa e incompleta','Reduções: quem reduz o quê','Reações de dupla classificação','Álcool × fenol: sódio e soda'],
+    topicos:['nox','produto_oxidacao','ozonolise','teste','conceito22'],
+    teoria:['Oxidação branda (Baeyer)','Oxidação enérgica: conte os hidrogênios','Ozonólise','Ozonólise × oxidação enérgica: a tabela que resolve','Oxidação de ciclanos e de aromáticos','Oxidação de álcoois','Bafômetro','Tollens e Fehling','Combustão completa e incompleta','Reduções: quem reduz o quê','Reações de dupla classificação'],
     tutorial:'oxirreducao', metaPratica:8, metaDesafio:8 },
 
-  { id:6, nome:'Integração', res:'Sequências e reação inversa',
-    desc:'Juntar tudo: prever produtos em cadeia, voltar do produto para o reagente e identificar frascos.',
-    topicos:['inverso','sequencia','nome_produto','produto_adicao','produto_eliminacao','produto_substituicao','produto_oxidacao','teste','dirigencia'],
-    teoria:['Sequências clássicas de síntese','Roteiro para identificar um frasco'],
+  { id:6, nome:'Capítulo 23 — Eliminação e ésteres', res:'Zaitsev, 140/170 °C e esterificação', cap:23,
+    desc:'Sai gente da molécula e nasce uma dupla — ou dois compostos se juntam perdendo água.',
+    topicos:['produto_eliminacao','saytzeff','condicao','conceito23'],
+    teoria:['Carbono alfa (α) e carbono beta (β)','Zaitsev, Saytzeff — a mesma regra','Regra de Saytzeff','140 °C ou 170 °C: éter ou alceno','KOH aquoso × KOH alcoólico','Desalogenação e desidrogenação','Esterificação e a pegadinha do O-18','Hidrólise e saponificação'],
+    tutorial:'eliminacao', metaPratica:8, metaDesafio:8 },
+
+  { id:7, nome:'Sabões, detergentes e integração', res:'Saponificação, biodiesel e sequências', cap:23,
+    desc:'O fecho do capítulo 23 — como o sabão limpa, o que é biodiesel — e a junção de tudo em sequências de reações.',
+    topicos:['conceito23','sequencia','inverso','produto_oxidacao','teste','dirigencia'],
+    teoria:['Sabões: como limpam','Detergentes e biodiesel','Hidrólise e saponificação','Sequências clássicas de síntese','Roteiro para identificar um frasco'],
     tutorial:'integracao', metaPratica:8, metaDesafio:10 }
 ];
 
@@ -3972,6 +4162,337 @@ function buscarLivro(q){
     return normName(v.tit + ' ' + v.cat + ' ' + (v.tags||'') + ' ' + v.txt + ' ' + (v.peg||'')).indexOf(q) >= 0;
   });
 }
+/* ============================================================================
+   CONTEÚDO DOS CAPÍTULOS 19 A 23
+   Banco de questões conceituais e verbetes montados a partir dos slides da
+   Profª Cledijane Alves. É a parte do conteúdo que não se resolve desenhando
+   estrutura: nomes de reações, ordens de reatividade, condições e o bloco de
+   sabões, detergentes e biodiesel.
+   ========================================================================== */
+
+var CONCEITOS = [
+/* ---------- capítulo 19 — adição ---------- */
+{ cap:19, q:'A hidrogenação catalítica de alcenos, feita com H₂ na presença de níquel ou platina, também é conhecida pelo nome de seus descobridores. Qual é ele?',
+  ops:['Reação de Sabatier-Senderens','Reação de Friedel-Crafts','Reação de Wurtz','Reação de Kolbe'],
+  certa:0,
+  exp:'É a reação de <b>Sabatier-Senderens</b>. O H₂ se adiciona à insaturação sobre o catalisador metálico, diminuindo o grau de insaturação da molécula.' },
+
+{ cap:19, q:'Na hidrogenação catalítica, os dois hidrogênios entram:',
+  ops:['pelo mesmo lado da molécula (adição cis)','por lados opostos (adição trans)','um de cada vez, sem ordem definida','sempre no carbono mais hidrogenado'],
+  certa:0,
+  exp:'O substrato se adsorve na superfície do metal e recebe os dois hidrogênios <b>pelo mesmo lado</b> — é uma adição CIS (ou sin). É por isso que a hidrogenação parcial de um alcino dá o isômero <b>cis</b>.' },
+
+{ cap:19, q:'Qual é a ordem de reatividade dos halogênios na adição a alcenos?',
+  ops:['Cl₂ > Br₂ > I₂','I₂ > Br₂ > Cl₂','Br₂ > Cl₂ > I₂','todos reagem igualmente'],
+  certa:0,
+  exp:'<b>Cl₂ > Br₂ > I₂</b>. As reações com flúor são violentas demais para uso prático e as com iodo praticamente não ocorrem.' },
+
+{ cap:19, q:'E a ordem de reatividade dos halogenidretos (HX) na adição?',
+  ops:['HI > HBr > HCl','HCl > HBr > HI','HBr > HI > HCl','todos iguais'],
+  certa:0,
+  exp:'<b>HI > HBr > HCl</b>. Quanto mais fraca a ligação H–X, mais fácil ela se rompe e mais reativo é o hidrácido.' },
+
+{ cap:19, q:'Comparando alcenos e alcinos nas reações de adição:',
+  ops:['os alcinos são mais reativos e podem sofrer uma ou duas adições','os alcenos são mais reativos','têm exatamente a mesma reatividade','alcinos não sofrem adição'],
+  certa:0,
+  exp:'Os <b>alcinos são mais reativos</b> que os alcenos e fazem as mesmas reações de adição. Como têm duas ligações pi, podem sofrer uma adição (virando alceno) ou duas (virando composto saturado).' },
+
+{ cap:19, q:'Na adição de água a um alcino, com catálise de Hg²⁺/H₂SO₄, forma-se primeiro um intermediário instável. Qual é ele?',
+  ops:['um enol, que por tautomeria vira aldeído ou cetona','um diol, que se desidrata','um éter, que se rompe','um carbocátion permanente'],
+  certa:0,
+  exp:'Forma-se um <b>enol</b> (OH preso a carbono de dupla), que é instável e por <b>tautomeria</b> se transforma espontaneamente em aldeído (só no caso do etino) ou em cetona (todos os demais alcinos).' },
+
+{ cap:19, q:'A adição de HCN a aldeídos e cetonas ocorre por um mecanismo de:',
+  ops:['adição nucleofílica','adição eletrofílica','substituição radicalar','eliminação'],
+  certa:0,
+  exp:'É uma <b>adição nucleofílica</b>: o carbono da carbonila tem carga parcial positiva e é atacado pelo íon CN⁻. Compare com o alceno, onde a adição é ELETROFÍLICA (quem ataca primeiro é o H⁺).' },
+
+{ cap:19, q:'Quando um aldeído ou uma cetona reage com hidrogênio, a reação é classificada como:',
+  ops:['redução, porque o hidrogênio age como agente redutor','oxidação, porque entra hidrogênio','substituição','eliminação'],
+  certa:0,
+  exp:'É uma <b>redução</b>. O hidrogênio age como agente redutor e o Nox do carbono da carbonila diminui. O produto é um álcool: primário se veio de aldeído, secundário se veio de cetona.' },
+
+/* ---------- capítulo 20 — substituição em alcanos ---------- */
+{ cap:20, q:'Na halogenação de alcanos, qual é a ordem de reatividade das substâncias simples dos halogênios?',
+  ops:['F₂ > Cl₂ > Br₂ > I₂','I₂ > Br₂ > Cl₂ > F₂','Cl₂ > F₂ > Br₂ > I₂','todas reagem igualmente'],
+  certa:0,
+  exp:'<b>F₂ > Cl₂ > Br₂ > I₂</b>. As reações com flúor são muito violentas e as com iodo praticamente não ocorrem, de modo que na prática se usa cloro e bromo.' },
+
+{ cap:20, q:'A halogenação de alcanos ocorre por qual mecanismo?',
+  ops:['radicalar, com iniciação, propagação em cadeia e terminação','iônico, com formação de carbocátion','nucleofílico, com ataque do halogeneto','não tem mecanismo definido'],
+  certa:0,
+  exp:'É <b>radicalar</b>, em três etapas: <b>iniciação</b> (a luz ou o calor quebra o X₂ em dois radicais), <b>propagação em cadeia</b> (o radical arranca um H do alcano e o radical de carbono captura o halogênio) e <b>terminação</b> (dois radicais se unem).' },
+
+{ cap:20, q:'Em um alcano com três ou mais carbonos, qual hidrogênio é substituído preferencialmente?',
+  ops:['o do carbono MENOS hidrogenado (mais substituído)','o do carbono mais hidrogenado','o do carbono da ponta, sempre','qualquer um, com a mesma chance'],
+  certa:0,
+  exp:'O hidrogênio preferido é o do carbono <b>menos hidrogenado</b>, ou seja, o mais substituído: <b>H de C terciário > H de C secundário > H de C primário</b>. O motivo é a estabilidade dos radicais livres formados — quanto mais substituído o radical, mais estável.' },
+
+{ cap:20, q:'A nitração de alcanos usa qual reagente e forma qual produto?',
+  ops:['HNO₃ concentrado a quente, formando nitrocompostos','H₂SO₄ concentrado, formando ácidos sulfônicos','HNO₂ a frio, formando aminas','NaNO₃ em água, formando nitritos'],
+  certa:0,
+  exp:'Usa <b>HNO₃</b> (que pode ser escrito como HO–NO₂) concentrado e a quente, formando <b>nitrocompostos</b> e água. O que entra no lugar do hidrogênio é o grupo –NO₂.' },
+
+{ cap:20, q:'A sulfonação usa H₂SO₄ concentrado a quente. O que entra na molécula?',
+  ops:['o grupo sulfônico –SO₃H, formando ácidos sulfônicos','o grupo –SO₄H','o grupo –NO₂','apenas hidrogênio'],
+  certa:0,
+  exp:'Entra o grupo <b>–SO₃H</b> (o H₂SO₄ pode ser lido como HO–SO₃H), formando um <b>ácido sulfônico</b> e água.' },
+
+{ cap:20, q:'Por que os ácidos sulfônicos e seus sais são importantes na indústria?',
+  ops:['são agentes tensoativos (surfactantes): diminuem a tensão superficial da água','são explosivos','servem como combustível','são usados como fertilizantes'],
+  certa:0,
+  exp:'São <b>tensoativos ou surfactantes</b>: diminuem a tensão superficial da água e permitem que as impurezas sejam removidas. É por isso que os detergentes sintéticos são, em sua maioria, sais de ácidos sulfônicos de cadeia longa.' },
+
+{ cap:20, q:'Segundo a teoria das tensões de Baeyer, como se comportam os ciclanos?',
+  ops:['anéis de 3 e 4 carbonos sofrem ADIÇÃO com abertura; de 5 ou mais, SUBSTITUIÇÃO','todos sofrem adição','todos sofrem substituição','anéis grandes se rompem mais facilmente'],
+  certa:0,
+  exp:'Pela <b>teoria das tensões de Baeyer</b>, quanto mais fechado o ângulo entre as ligações, mais tenso e instável é o anel. Ciclopropano (60°) e ciclobutano (90°) sofrem <b>adição com abertura do anel</b>; anéis com <b>cinco ou mais carbonos</b> são estáveis e fazem <b>substituição</b>, como os alcanos.' },
+
+{ cap:20, q:'Nos haletos orgânicos, por que o carbono ligado ao halogênio é atacado por nucleófilos?',
+  ops:['porque a ligação C–X é polarizada e deixa o carbono com carga parcial positiva','porque o carbono fica com carga negativa','porque o halogênio é um bom nucleófilo','porque a ligação é apolar'],
+  certa:0,
+  exp:'A ligação <b>C–X é polarizada</b>: o halogênio, mais eletronegativo, puxa os elétrons e deixa o carbono com <b>carga parcial positiva</b>. Reagentes nucleófilos, que têm elétrons disponíveis, atacam justamente esse carbono.' },
+
+/* ---------- capítulo 21 — aromáticos ---------- */
+{ cap:21, q:'Por que o benzeno faz principalmente reações de substituição, e não de adição?',
+  ops:['por causa da estabilidade do anel aromático','porque não tem ligações duplas','porque é muito reativo','porque é um composto saturado'],
+  certa:0,
+  exp:'Pela <b>estabilidade do anel aromático</b>, garantida pela ressonância. Fazer adição destruiria a aromaticidade, então o caminho mais fácil é trocar um H do anel por outro grupo.' },
+
+{ cap:21, q:'Quais catalisadores são usados na halogenação do benzeno?',
+  ops:['FeCl₃, AlCl₃ ou Fe','H₂SO₄ diluído','NaOH','luz ultravioleta'],
+  certa:0,
+  exp:'Usa-se <b>FeCl₃, AlCl₃ ou ferro metálico</b>. Eles polarizam a molécula de halogênio e geram o eletrófilo que ataca o anel. Repare: com LUZ e SEM catalisador o benzeno faz adição e dá BHC.' },
+
+{ cap:21, q:'O que caracteriza um grupo ORTO-PARA dirigente já presente no anel?',
+  ops:['facilita a entrada do 2º substituinte — é ativante','dificulta a entrada do 2º substituinte','não interfere na reação','impede qualquer substituição'],
+  certa:0,
+  exp:'Os grupos orto-para dirigentes <b>facilitam</b> a entrada do segundo substituinte, por isso são chamados de <b>ativantes</b>. São eles: –OH, –NH₂, –OR, –R (alquila) e os halogênios.' },
+
+{ cap:21, q:'E os grupos META dirigentes?',
+  ops:['dificultam a entrada do 2º substituinte — são desativantes','facilitam a entrada do 2º substituinte','tornam o anel mais reativo','só existem em anéis com três substituintes'],
+  certa:0,
+  exp:'Os meta-dirigentes <b>dificultam</b> a entrada do segundo grupo — são <b>desativantes</b>. São eles: –NO₂, –COOH, –CHO, –CO–R, –SO₃H, –CN e –CCl₃.' },
+
+{ cap:21, q:'Três nitrações são comparadas: benzeno (v₁), fenol (v₂) e ácido benzoico (v₃). Qual é a ordem das velocidades?',
+  ops:['v₂ > v₁ > v₃','v₁ > v₂ > v₃','v₃ > v₂ > v₁','as três são iguais'],
+  certa:0,
+  exp:'<b>v₂ > v₁ > v₃</b>. O fenol tem –OH, que é <b>ativante</b> e acelera a reação; o ácido benzoico tem –COOH, que é <b>desativante</b> e retarda. O benzeno puro fica no meio. Dirigência diz ONDE o grupo entra; ativante ou desativante diz COM QUE VELOCIDADE.' },
+
+{ cap:21, q:'Qual é a exceção conhecida na dirigência do anel benzênico?',
+  ops:['os halogênios são orto-para dirigentes, mas são desativantes','o grupo –NO₂ é orto-para dirigente','o grupo –OH é meta-dirigente','o grupo alquila não dirige nada'],
+  certa:0,
+  exp:'Os <b>halogênios</b> são a exceção: dirigem para <b>orto e para</b>, como os ativantes, mas <b>desativam</b> o anel, deixando a reação mais lenta.' },
+
+{ cap:21, q:'Qual a diferença entre alquilação e acilação de Friedel-Crafts?',
+  ops:['a alquilação insere um grupo alquila (–R); a acilação insere um grupo acila (–CO–R)','a alquilação usa luz e a acilação usa calor','a alquilação ocorre em orto e a acilação em meta','não há diferença'],
+  certa:0,
+  exp:'Na <b>alquilação</b> entra um grupo <b>alquila</b>, a partir de um haleto de alquila com AlCl₃ a seco. Na <b>acilação</b> entra um grupo <b>acila</b> (–CO–R), a partir de um cloreto de ácido, também com AlCl₃, formando uma cetona aromática.' },
+
+{ cap:21, q:'No tolueno, quando a substituição ocorre no ANEL benzênico?',
+  ops:['na ausência de luz e em temperaturas baixas','na presença de luz e a altas temperaturas','sempre, independentemente das condições','nunca, só na cadeia lateral'],
+  certa:0,
+  exp:'No <b>anel</b>: sem luz, a frio e com catalisador. Na <b>cadeia lateral</b> (no –CH₃): com luz e a alta temperatura, por mecanismo radicalar. As condições decidem o produto — é a pergunta clássica sobre o tolueno.' },
+
+/* ---------- capítulo 22 — oxirredução ---------- */
+{ cap:22, q:'Em química orgânica, o que caracteriza uma reação de OXIDAÇÃO do substrato?',
+  ops:['entrada de oxigênio ou saída de hidrogênio, com aumento do Nox','entrada de hidrogênio, com diminuição do Nox','troca de um grupo por outro','formação de uma ligação dupla apenas'],
+  certa:0,
+  exp:'Na <b>oxidação</b> há entrada de oxigênio ou saída de hidrogênio, o <b>Nox aumenta</b> e o substrato perde elétrons. Na <b>redução</b> é o contrário: entra hidrogênio, o Nox diminui e o substrato ganha elétrons.' },
+
+{ cap:22, q:'Na ozonólise, um carbono da dupla que possui DOIS hidrogênios origina:',
+  ops:['metanal','um aldeído de cadeia maior','uma cetona','gás carbônico'],
+  certa:0,
+  exp:'Com <b>2 H</b> o produto é o <b>metanal</b> (o aldeído mais simples). Com <b>1 H</b> sai um aldeído; <b>sem H</b>, uma cetona. Atenção: na oxidação ENÉRGICA, esse mesmo carbono com 2 H daria CO₂.' },
+
+{ cap:22, q:'Por que se adiciona zinco em pó na ozonólise?',
+  ops:['para destruir o H₂O₂ formado, impedindo que ele oxide o aldeído a ácido','para acelerar a quebra da dupla','para neutralizar o ozônio que sobrou','para formar o glicol'],
+  certa:0,
+  exp:'O zinco <b>destrói o peróxido de hidrogênio</b> formado na reação. Sem ele, o H₂O₂ oxidaria o aldeído a ácido carboxílico e a resposta mudaria.' },
+
+{ cap:22, q:'O reativo de Baeyer é uma solução de KMnO₄ diluída, neutra ou levemente básica, a frio. Que produto ele forma a partir de um alceno?',
+  ops:['um diálcool vicinal, chamado glicol','um ácido carboxílico','uma cetona e um aldeído','gás carbônico e água'],
+  certa:0,
+  exp:'Forma um <b>diálcool vicinal</b> (glicol): um OH em cada carbono da antiga dupla. A oxidação é chamada de BRANDA porque rompe apenas uma ligação da dupla e <b>não quebra a cadeia</b>.' },
+
+{ cap:22, q:'A oxidação branda aplicada a um ALCINO forma:',
+  ops:['uma dicetona, porque rompem-se as duas ligações pi','um glicol, igual ao alceno','um ácido carboxílico','nenhum produto'],
+  certa:0,
+  exp:'No alcino rompem-se <b>as duas ligações pi</b> e cada carbono fica com um oxigênio: o produto é uma <b>dicetona</b>. No alceno, com uma pi só, o produto é o glicol.' },
+
+{ cap:22, q:'Na oxidação ENÉRGICA de um alceno (KMnO₄ concentrado, meio ácido, a quente), um carbono da dupla com DOIS hidrogênios origina:',
+  ops:['gás carbônico e água','metanal','um ácido carboxílico','uma cetona'],
+  certa:0,
+  exp:'Com <b>2 H</b> sai <b>CO₂ + H₂O</b>. Com <b>1 H</b> sai um ácido carboxílico; <b>sem H</b>, uma cetona. Compare com a ozonólise, em que esse mesmo carbono daria metanal.' },
+
+{ cap:22, q:'O que acontece quando um CICLANO sofre oxidação enérgica?',
+  ops:['o anel se rompe e forma-se um ácido dicarboxílico','o anel permanece intacto','forma-se apenas CO₂','não há reação'],
+  certa:0,
+  exp:'Os ciclanos <b>oxidam com ruptura da cadeia cíclica</b>, produzindo <b>ácidos dicarboxílicos</b> — um –COOH em cada ponta da cadeia aberta.' },
+
+{ cap:22, q:'Por que o anel benzênico resiste à oxidação enérgica, mas o tolueno é oxidado?',
+  ops:['o anel é estabilizado por ressonância; quem é oxidada é a cadeia lateral, que vira –COOH','o anel é oxidado e a cadeia lateral permanece','os dois são destruídos','o tolueno não reage'],
+  certa:0,
+  exp:'A <b>estabilidade do anel</b> o torna resistente aos oxidantes. Nos aromáticos de cadeia mista, quem sofre a oxidação é a <b>cadeia lateral</b>, que vira –COOH: o tolueno dá <b>ácido benzoico</b>.' },
+
+{ cap:22, q:'"O vinho vira vinagre" é um exemplo de qual reação?',
+  ops:['oxidação de álcool primário: etanol → etanal → ácido etanoico','redução de aldeído a álcool','esterificação do etanol','fermentação do açúcar'],
+  certa:0,
+  exp:'É a <b>oxidação do álcool primário</b>. O etanol do vinho é oxidado pelo oxigênio do ar a etanal e depois a <b>ácido etanoico</b> — que é exatamente o ácido do vinagre.' },
+
+{ cap:22, q:'Como se diferencia um aldeído de uma cetona no laboratório?',
+  ops:['com um reativo que sofre redução: Tollens ou Fehling — só o aldeído dá positivo','pela cor da substância','pelo cheiro','pelo ponto de fusão'],
+  certa:0,
+  exp:'Testa-se com um reativo capaz de <b>sofrer redução</b>: se a redução ocorre, é aldeído; se não ocorre, é cetona. O <b>reativo de Tollens</b> (solução amoniacal de nitrato de prata) forma o espelho de prata; o <b>reativo de Fehling</b> forma um precipitado vermelho-tijolo de Cu₂O.' },
+
+{ cap:22, q:'O reativo de Fehling é formado por:',
+  ops:['solução alcalina de tartarato duplo de sódio e potássio com sulfato de cobre (II)','solução amoniacal de nitrato de prata','permanganato de potássio diluído','dicromato de potássio em meio ácido'],
+  certa:0,
+  exp:'O Fehling é a mistura de uma solução <b>alcalina de tartarato duplo de sódio e potássio</b> com solução de <b>sulfato de cobre (II)</b>. Com aldeído forma-se um precipitado vermelho-tijolo.' },
+
+/* ---------- capítulo 23 — eliminação, ésteres e sabões ---------- */
+{ cap:23, q:'O que são os carbonos alfa (α) e beta (β) numa reação de eliminação?',
+  ops:['α é o carbono que carrega o grupo que sai; β são os carbonos vizinhos a ele','α é o primeiro carbono da cadeia e β o segundo','α é o carbono mais hidrogenado','α e β são os dois carbonos da dupla formada'],
+  certa:0,
+  exp:'O carbono <b>α</b> é o que carrega o grupo que sai (o OH ou o halogênio). Os carbonos <b>β</b> são os <b>vizinhos</b> dele — e é de um carbono β que sai o hidrogênio. A dupla se forma entre o α e o β escolhido.' },
+
+{ cap:23, q:'A regra de Zaitsev (ou Saytzeff) diz que, numa eliminação, o produto principal é aquele em que:',
+  ops:['o hidrogênio saiu do carbono β MENOS hidrogenado','o hidrogênio saiu do carbono β mais hidrogenado','o hidrogênio saiu do carbono α','nenhum hidrogênio é eliminado'],
+  certa:0,
+  exp:'Sai o H do carbono β <b>menos hidrogenado</b>. A razão é a estabilidade: o alceno <b>mais substituído</b> é o mais estável, e por isso se forma em maior proporção. A mesma regra aparece com os dois nomes: Zaitsev e Saytzeff.' },
+
+{ cap:23, q:'Nas eliminações é comum formar mistura de isômeros geométricos. Qual predomina?',
+  ops:['o isômero E (trans), que é mais estável','o isômero Z (cis), que é mais estável','os dois em quantidades iguais','nenhum isômero se forma'],
+  certa:0,
+  exp:'Predomina o isômero <b>E (trans)</b>, porque nele os grupos maiores ficam em lados opostos da dupla, o que diminui a repulsão e o torna <b>mais estável</b>.' },
+
+{ cap:23, q:'A desidratação INTRAmolecular de um álcool ocorre em que condições e dá qual produto?',
+  ops:['H₂SO₄ a cerca de 170 °C, formando alceno','H₂SO₄ a cerca de 140 °C, formando éter','NaOH aquoso a frio, formando alcóxido','água a 100 °C, formando aldeído'],
+  certa:0,
+  exp:'Ocorre em <b>uma mesma molécula</b>, a cerca de <b>170 °C</b>, com H₂SO₄ como desidratante, formando <b>alceno</b> — e obedece à regra de Zaitsev.' },
+
+{ cap:23, q:'E a desidratação INTERmolecular?',
+  ops:['entre duas moléculas, a cerca de 140 °C, formando éter','entre duas moléculas, a 170 °C, formando alceno','em uma molécula, a 140 °C, formando aldeído','não usa catalisador'],
+  certa:0,
+  exp:'Ocorre <b>entre moléculas diferentes</b>, a cerca de <b>140 °C</b> — temperatura MENOR que a da intramolecular — também com H₂SO₄, e o produto é um <b>éter</b>.' },
+
+{ cap:23, q:'Qual a ordem de rapidez da desidratação dos álcoois?',
+  ops:['terciário > secundário > primário','primário > secundário > terciário','todos desidratam na mesma velocidade','apenas os primários desidratam'],
+  certa:0,
+  exp:'<b>Terciário > secundário > primário</b>. O álcool terciário desidrata mais facilmente porque forma o carbocátion mais estável.' },
+
+{ cap:23, q:'A reação entre ácido carboxílico e álcool, formando éster e água, chama-se:',
+  ops:['esterificação — e a reação inversa é a hidrólise','saponificação','transesterificação','neutralização'],
+  certa:0,
+  exp:'É a <b>esterificação</b>; o caminho de volta (éster + água → ácido + álcool) é a <b>hidrólise</b>. Os dois sentidos convivem em equilíbrio.' },
+
+{ cap:23, q:'Por que a esterificação é importante para a indústria alimentícia?',
+  ops:['porque produz os flavorizantes, ésteres que dão sabor e aroma','porque produz conservantes','porque produz corantes','porque produz adoçantes'],
+  certa:0,
+  exp:'Os ésteres são os <b>flavorizantes</b> — responsáveis pelo sabor e aroma de frutas e de muitos produtos industrializados.' },
+
+{ cap:23, q:'A transesterificação (ou alcoólise) de um óleo vegetal com álcool produz:',
+  ops:['biodiesel e glicerol','sabão e água','ácido graxo e sal','apenas glicerol'],
+  certa:0,
+  exp:'O óleo (um triéster do glicerol) reage com metanol ou etanol, na presença de catalisador, e forma uma mistura de <b>ésteres de ácidos graxos — o biodiesel</b> — liberando <b>glicerol</b> como subproduto.' },
+
+{ cap:23, q:'A saponificação é a reação entre:',
+  ops:['um triéster de glicerol (óleo ou gordura) e uma base inorgânica, a quente','um éster e um álcool','um ácido e um álcool','dois ácidos graxos'],
+  certa:0,
+  exp:'É a <b>hidrólise alcalina</b>: um triéster do glicerol com ácido graxo superior reage com uma base inorgânica, <b>a quente</b>, formando um <b>sal orgânico (o sabão)</b> e <b>glicerol</b>. É uma reação <b>irreversível</b>.' },
+
+{ cap:23, q:'Qual a diferença entre usar NaOH e KOH na saponificação?',
+  ops:['NaOH dá sabão duro; KOH dá sabão mole','NaOH dá sabão mole; KOH dá sabão duro','não há diferença no produto','o KOH não produz sabão'],
+  certa:0,
+  exp:'<b>NaOH → sabão duro</b> (as barras). <b>KOH → sabão mole</b> (pastoso, líquido ou em creme).' },
+
+{ cap:23, q:'O que é um ácido graxo superior?',
+  ops:['um ácido carboxílico com mais de 10 carbonos na cadeia principal','um ácido com mais de 3 carbonos','um ácido inorgânico forte','um ácido com anel aromático'],
+  certa:0,
+  exp:'É o ácido carboxílico de cadeia longa, com <b>mais de 10 carbonos</b>. São eles que formam os óleos e as gorduras — e, depois da saponificação, os sabões.' },
+
+{ cap:23, q:'A molécula de sabão tem duas partes bem diferentes. Quais são?',
+  ops:['uma cabeça polar (sal de ácido carboxílico) e uma cauda apolar lipossolúvel','duas cabeças polares','duas caudas apolares','uma cabeça ácida e uma cabeça básica'],
+  certa:0,
+  exp:'A <b>cabeça polar</b> é o sal de ácido carboxílico, que interage com a água; a <b>cauda apolar</b> (a longa cadeia de carbonos) é lipossolúvel e se prende à gordura. É essa dupla natureza que faz o sabão limpar.' },
+
+{ cap:23, q:'O que significa dizer que o sabão é um agente TENSOATIVO?',
+  ops:['que ele diminui a tensão superficial da água','que ele aumenta a tensão superficial da água','que ele deixa a água mais ácida','que ele evapora rapidamente'],
+  certa:0,
+  exp:'Tensoativo é o que <b>diminui a tensão superficial</b> da água, permitindo que ela molhe melhor as superfícies e carregue as impurezas.' },
+
+{ cap:23, q:'E o que faz o sabão como EMULSIFICANTE (surfactante)?',
+  ops:['promove a aglomeração da gordura em pequenas gotículas, as micelas','faz a gordura evaporar','transforma a gordura em sabão','separa a água do óleo definitivamente'],
+  certa:0,
+  exp:'Ele envolve a gordura em pequenas gotículas chamadas <b>micelas</b>: as caudas apolares ficam voltadas para dentro, presas à gordura, e as cabeças polares para fora, em contato com a água. Assim a sujeira é levada pela água.' },
+
+{ cap:23, q:'O que é água dura e por que ela atrapalha o uso do sabão?',
+  ops:['é a água com excesso de Ca²⁺ e Mg²⁺, que formam compostos insolúveis com o sabão e impedem a espuma','é a água com muito cloro, que destrói o sabão','é a água muito fria, que não dissolve o sabão','é a água salgada, que neutraliza o sabão'],
+  certa:0,
+  exp:'Água dura contém excesso de cátions <b>Ca²⁺ e Mg²⁺</b>. Eles formam <b>compostos insolúveis</b> com os ânions do sabão, e por isso a água dura <b>não permite a formação de espuma</b>.' },
+
+{ cap:23, q:'Do que são feitos, quimicamente, a maioria dos detergentes sintéticos?',
+  ops:['sais de ácidos sulfônicos de cadeia longa','sais de ácidos carboxílicos de cadeia longa','ésteres de glicerol','álcoois de cadeia longa'],
+  certa:0,
+  exp:'A maioria dos detergentes é formada por <b>sais de ácidos sulfônicos de cadeia longa</b> — a cabeça hidrofílica é um sal de ácido sulfônico, e a cauda hidrofóbica é a cadeia carbônica. Já o sabão tem cabeça de sal de ácido carboxílico.' },
+
+{ cap:23, q:'Qual a característica dos detergentes catiônicos do tipo sal de amônio quaternário?',
+  ops:['têm efeito germicida — aparecem nos rótulos como "quaternário de amônio"','são os mais usados na louça','não fazem espuma','são os únicos biodegradáveis'],
+  certa:0,
+  exp:'Os detergentes <b>catiônicos</b> do tipo sal de <b>amônio quaternário</b> têm ação <b>germicida</b>, por isso aparecem em desinfetantes com a indicação "ingrediente ativo: quaternário de amônio".' },
+
+{ cap:23, q:'Em questões do ENEM, os detergentes aparecem associados a dois usos ambientais. Quais?',
+  ops:['dispersar o petróleo derramado no mar; e, quando biodegradáveis e sem fosfato, evitar a eutrofização','produzir energia elétrica e tratar esgoto','purificar o ar e reduzir o efeito estufa','dessalinizar a água e matar insetos'],
+  certa:0,
+  exp:'Os tensoativos são usados para <b>dispersar o petróleo</b> em derramamentos, quebrando a mancha em gotículas. E a escolha de detergentes adequados ajuda a evitar a <b>eutrofização</b> — o crescimento excessivo de algas causado pelo excesso de nutrientes na água.' }
+];
+
+function conceitosDoCap(cap){
+  return CONCEITOS.filter(function(c){ return c.cap===cap; });
+}
+
+/* ---------- verbetes novos no livro de regras ---------- */
+LIVRO.push(
+{ cat:'Fundamentos', tit:'Carbono alfa (α) e carbono beta (β)', tags:'alfa beta eliminacao zaitsev carbono vizinho',
+  txt:'Na hora de estudar eliminação, dê nome aos carbonos:<ul class="tight"><li><b>Carbono α</b> — é o que carrega o grupo que vai sair (o OH do álcool ou o halogênio do haleto).</li><li><b>Carbonos β</b> — são os VIZINHOS do α. É de um deles que sai o hidrogênio.</li></ul>A ligação dupla se forma <b>entre o α e o β escolhido</b>. Quando há mais de um β disponível, é a regra de Zaitsev que decide qual.',
+  ex:'CCC(O)C', exTxt:'No butan-2-ol, o carbono do OH é o α; os dois CH que estão ao lado dele são os β.' },
+
+{ cat:'Eliminação', tit:'Zaitsev, Saytzeff — a mesma regra', tags:'zaitsev saytzeff regra eliminacao nome alceno estavel',
+  txt:'A regra que diz que o hidrogênio sai do carbono <b>β menos hidrogenado</b> aparece nos livros com dois nomes: <b>Zaitsev</b> e <b>Saytzeff</b> (são transliterações do mesmo sobrenome russo). Se a prova usar um ou outro, é a mesma coisa.<br>O motivo da regra é a estabilidade: o alceno <b>mais substituído</b> é o mais estável, e por isso se forma em maior porcentagem.',
+  ex:'CCC(O)C', exTxt:'Butan-2-ol a 170 °C: sai o H do CH₂ (menos hidrogenado que o CH₃) e o produto principal é o but-2-eno.',
+  peg:'Nas eliminações costuma sair uma MISTURA de isômeros geométricos. O isômero E (trans) é mais estável e predomina.' },
+
+{ cat:'Adição', tit:'Ordens de reatividade que caem em prova', tags:'ordem reatividade halogenio hidracido alcino alceno hx',
+  txt:'<ul class="tight"><li><b>Adição de halogênio a insaturados:</b> Cl₂ &gt; Br₂ &gt; I₂ (o flúor é violento demais; o iodo praticamente não reage)</li><li><b>Substituição em alcanos:</b> F₂ &gt; Cl₂ &gt; Br₂ &gt; I₂</li><li><b>Adição de hidrácidos:</b> HI &gt; HBr &gt; HCl</li><li><b>Insaturados:</b> alcino &gt; alceno (o alcino ainda pode sofrer uma ou duas adições)</li><li><b>Hidrogênio na halogenação:</b> H de C terciário &gt; secundário &gt; primário</li><li><b>Desidratação de álcoois:</b> terciário &gt; secundário &gt; primário</li></ul>' },
+
+{ cat:'Adição', tit:'Nomes próprios das reações', tags:'sabatier senderens kharasch markovnikov zaitsev baeyer friedel crafts tollens fehling nome',
+  txt:'<ul class="tight"><li><b>Sabatier-Senderens</b> — hidrogenação catalítica (H₂ com Ni ou Pt)</li><li><b>Markovnikov</b> — o H entra no carbono mais hidrogenado</li><li><b>Kharasch</b> (efeito peróxido) — inverte Markovnikov, só com HBr</li><li><b>Zaitsev / Saytzeff</b> — eliminação: sai o H do carbono β menos hidrogenado</li><li><b>Baeyer</b> — dois usos: o reativo (KMnO₄ diluído) e a teoria das tensões dos anéis</li><li><b>Friedel-Crafts</b> — alquilação e acilação do anel aromático</li><li><b>Tollens</b> — espelho de prata; <b>Fehling</b> — precipitado vermelho-tijolo</li></ul>',
+  peg:'Uma questão pode perguntar só o NOME da regra. "A porção positiva dirige-se ao carbono mais hidrogenado" = Markovnikov, não Kharasch.' },
+
+{ cat:'Substituição', tit:'Substituição no tolueno: anel ou cadeia lateral', tags:'tolueno anel cadeia lateral luz temperatura catalisador benzila',
+  txt:'No tolueno a substituição pode acontecer em dois lugares, e são as <b>condições</b> que decidem:<ul class="tight"><li><b>No ANEL</b> — sem luz, temperatura baixa, com catalisador (AlCl₃/FeCl₃). Mecanismo eletrofílico, produtos em orto e para.</li><li><b>Na CADEIA LATERAL</b> (no –CH₃) — com luz e temperatura alta, sem catalisador. Mecanismo radicalar.</li></ul>',
+  ex:'CC1=CC=CC=C1', exTxt:'Tolueno + Cl₂: com AlCl₃ no escuro dá o- e p-clorotolueno; com luz e calor dá o (clorometil)benzeno.' },
+
+{ cat:'Substituição', tit:'Ativante e desativante: a velocidade da reação', tags:'ativante desativante velocidade dirigencia anel benzeno rapidez',
+  txt:'Dirigência e velocidade são coisas diferentes:<ul class="tight"><li><b>ONDE o grupo entra</b> → dirigência (orto-para ou meta)</li><li><b>COM QUE VELOCIDADE</b> → ativante (mais rápido que o benzeno) ou desativante (mais lento)</li></ul>Ativantes: –OH, –NH₂, –OR, –R. Desativantes: –NO₂, –COOH, –CHO, –CO–R, –SO₃H, –CN, –CCl₃ e também os halogênios.',
+  peg:'Comparando nitrações: o fenol reage mais rápido que o benzeno, e o ácido benzoico mais devagar. Ou seja, v(fenol) > v(benzeno) > v(ácido benzoico).' },
+
+{ cat:'Oxirredução', tit:'Ozonólise × oxidação enérgica: a tabela que resolve', tags:'ozonolise energica comparar tabela hidrogenio aldeido cetona co2 metanal',
+  txt:'As duas quebram a cadeia na dupla, mas os produtos são diferentes. Conte os hidrogênios do carbono da dupla:<div class="tscroll"><table class="t"><tr><th>H no carbono</th><th>Ozonólise (O₃ + Zn)</th><th>Enérgica (KMnO₄/H⁺ quente)</th></tr><tr><td>2 H</td><td>metanal</td><td>CO₂ + H₂O</td></tr><tr><td>1 H</td><td>aldeído</td><td>ácido carboxílico</td></tr><tr><td>nenhum</td><td>cetona</td><td>cetona</td></tr></table></div>',
+  peg:'O zinco existe justamente para destruir o H₂O₂ formado. Sem ele, o aldeído continuaria oxidando até ácido — e a resposta mudaria.' },
+
+{ cat:'Oxirredução', tit:'Oxidação de ciclanos e de aromáticos', tags:'ciclano aromatico oxidacao energica dicarboxilico benzoico anel',
+  txt:'<ul class="tight"><li><b>Ciclano</b> — oxida com <b>ruptura do anel</b> e forma um <b>ácido dicarboxílico</b> (um –COOH em cada ponta).</li><li><b>Aromático</b> — o anel <b>resiste</b> à oxidação; quem é atacada é a <b>cadeia lateral</b>, que vira –COOH. Tolueno dá ácido benzoico.</li></ul>',
+  ex:'C1CCCCC1', exTxt:'Ciclo-hexano + KMnO₄/H⁺ a quente → ácido hexanodioico (ácido adípico, usado no náilon).' },
+
+{ cat:'Integração', tit:'Sabões: como limpam', tags:'sabao tensoativo micela emulsificante cabeca polar cauda apolar saponificacao duro mole',
+  txt:'O sabão é o <b>sal de ácido graxo</b> que sai da saponificação (triéster de glicerol + base, a quente, reação <b>irreversível</b>).<ul class="tight"><li><b>Cabeça polar</b> — o sal de ácido carboxílico, que gosta de água</li><li><b>Cauda apolar</b> — a cadeia longa de carbonos, lipossolúvel, que se prende à gordura</li></ul>Por causa dessas duas partes ele é <b>tensoativo</b> (diminui a tensão superficial da água) e <b>emulsificante</b>: envolve a gordura em gotículas chamadas <b>micelas</b>, que a água leva embora.<br><b>NaOH → sabão duro</b> (barra). <b>KOH → sabão mole</b> (pastoso).',
+  peg:'Água dura tem excesso de Ca²⁺ e Mg²⁺, que formam sais insolúveis com o sabão. Resultado: não faz espuma.' },
+
+{ cat:'Integração', tit:'Detergentes e biodiesel', tags:'detergente sulfonico cationico amonio quaternario germicida biodiesel transesterificacao eutrofizacao petroleo enem',
+  txt:'<b>Detergentes</b> são, em sua maioria, <b>sais de ácidos sulfônicos de cadeia longa</b> — mesma ideia do sabão (cauda apolar + cabeça polar), mas com cabeça de ácido sulfônico em vez de carboxílico. Os <b>catiônicos</b>, do tipo <b>sal de amônio quaternário</b>, têm ação <b>germicida</b> e aparecem em desinfetantes.<br><b>Biodiesel</b> vem da <b>transesterificação</b> (alcoólise): óleo vegetal + metanol ou etanol, com catalisador, formando ésteres de ácidos graxos e liberando <b>glicerol</b>.',
+  peg:'Pegadinha do ENEM: tensoativos são usados para dispersar manchas de petróleo no mar, e a escolha do detergente certo ajuda a evitar a eutrofização.' }
+);
 /* ============================================================================
    8. ESTADO — XP, progresso por tópico, revisão espaçada, localStorage
    ========================================================================== */
@@ -4128,7 +4649,9 @@ var TOPICO_NOME = {
   condicao:'Condição de reação', tautomeria:'Enol e tautomeria', sequencia:'Sequência de reações',
   quiral:'Carbono quiral', nome_produto:'Nome do produto',
   classe_funcao:'Álcool/amina/haleto 1°, 2° ou 3°', pares:'Funções que se confundem',
-  grupo:'Grupo funcional', acharGrupo:'Achar o grupo na estrutura'
+  grupo:'Grupo funcional', acharGrupo:'Achar o grupo na estrutura',
+  conceito:'Teoria dos capítulos', conceito19:'Teoria — adição', conceito20:'Teoria — substituição',
+  conceito21:'Teoria — aromáticos', conceito22:'Teoria — oxirredução', conceito23:'Teoria — eliminação e ésteres'
 };
 
 /* ---- tabela das funções orgânicas (usada no treino e na referência) ---- */
@@ -4364,6 +4887,30 @@ var RX_POR_TOPICO = {
   tautomeria:['hidratacao_alcino'],
   ozonolise:['ozonolise','oxidacao_energica']
 };
+
+/* ---- teoria dos capítulos (slides da professora) ---- */
+function questaoConceito(cap){
+  var pool = cap ? conceitosDoCap(cap) : CONCEITOS;
+  if(!pool.length) pool = CONCEITOS;
+  var c = pick(pool);
+  var certa = c.ops[c.certa];
+  var erradas = c.ops.filter(function(o,i){ return i!==c.certa; });
+  var ops = shuffle(c.ops.map(function(t,i){
+    return opc(t, i===c.certa, i===c.certa ? null : 'Leia a explicação abaixo: não é isso que o capítulo diz.');
+  }));
+  var primeiras = certa.split(' ').slice(0,3).join(' ');
+  return {
+    topico: cap ? ('conceito'+cap) : 'conceito',
+    tipo:'escolha', opcoes:ops, semMol:true,
+    capitulo:c.cap,
+    enunciado:c.q,
+    explica:c.exp,
+    dicas:['Questão de teoria do capítulo '+c.cap+'. Pense no que a aula disse, não na estrutura.',
+           'Pode descartar de cara: “'+esc(erradas[0])+'”.',
+           'A resposta começa com “'+esc(primeiras)+'…”.'],
+    xp:12
+  };
+}
 
 /* ---- Álcool, amina e haleto: 1°, 2° ou 3° ---- */
 function questaoClassificarFuncao(nivel){
@@ -4805,6 +5352,12 @@ function gerarQuestao(topico, nivel){
     case 'sequencia': return questaoSequencia(nivel);
     case 'nome_produto': return questaoNomeProduto(nivel);
     case 'classe_funcao': return questaoClassificarFuncao(nivel);
+    case 'conceito': return questaoConceito(null);
+    case 'conceito19': return questaoConceito(19);
+    case 'conceito20': return questaoConceito(20);
+    case 'conceito21': return questaoConceito(21);
+    case 'conceito22': return questaoConceito(22);
+    case 'conceito23': return questaoConceito(23);
     case 'pares': return questaoPares(nivel);
     case 'grupo': return questaoGrupo(nivel);
     case 'markovnikov': case 'saytzeff': case 'tautomeria':
@@ -4889,23 +5442,35 @@ function atualizarHeader(){
 
 /* ---- navegação ---- */
 var MODOS = [
-  { id:'trilha',        nome:'Trilha' },
-  { id:'funcoes',       nome:'Funções' },
-  { id:'construtor',    nome:'Construtor' },
-  { id:'aleatoria',     nome:'Molécula aleatória' },
-  { id:'laboratorio',   nome:'Laboratório' },
-  { id:'inverso',       nome:'Reação inversa' },
-  { id:'identificacao', nome:'Identificação' },
-  { id:'simulado',      nome:'Simulado' },
-  { id:'livro',         nome:'Livro de regras' }
+  { id:'trilha',     nome:'Trilha' },
+  { id:'treinar',    nome:'Treinar' },
+  { id:'construtor', nome:'Construtor' },
+  { id:'simulado',   nome:'Simulado' },
+  { id:'livro',      nome:'Livro de regras' }
 ];
+// telas que vivem debaixo de uma entrada do menu
+var MODO_PAI = {
+  funcoes:'treinar', aleatoria:'treinar', laboratorio:'treinar',
+  inverso:'treinar', identificacao:'treinar', nivel:'trilha'
+};
 var MODO_ATUAL = 'trilha';
 var SUPRIMIR_TUTORIAL = false;   // evita tutorial por cima do modal de boas-vindas
 
 function renderNav(){
+  var ativo = MODO_PAI[MODO_ATUAL] || MODO_ATUAL;
   $('nav').innerHTML = MODOS.map(function(m){
-    return '<button data-modo="'+m.id+'"'+(m.id===MODO_ATUAL?' class="on"':'')+'>'+esc(m.nome)+'</button>';
+    return '<button data-modo="'+m.id+'"'+(m.id===ativo?' class="on"':'')+'>'+esc(m.nome)+'</button>';
   }).join('');
+}
+
+// quanto o jogador já domina de um conjunto de tópicos (0 a 100, ou null se nunca praticou)
+function dominioDe(topicos){
+  var c = 0, e = 0;
+  topicos.forEach(function(t){
+    var o = S.topicos[t];
+    if(o){ c += o.c; e += o.e; }
+  });
+  return (c+e) ? Math.round(c/(c+e)*100) : null;
 }
 
 function irPara(modo, args){
@@ -4913,6 +5478,7 @@ function irPara(modo, args){
   renderNav();
   switch(modo){
     case 'trilha': telaTrilha(args); break;
+    case 'treinar': telaTreinar(args); break;
     case 'funcoes': telaFuncoes(args); break;
     case 'construtor': telaConstrutor(args); break;
     case 'aleatoria': telaAleatoria(args); break;
@@ -5089,6 +5655,62 @@ function telaTrilha(){
 }
 
 /* ============================================================================
+   TELA: TREINAR — índice dos treinos livres
+   ========================================================================== */
+var TREINOS = [
+  { id:'funcoes', nome:'Funções', res:'Reconhecer e classificar',
+    txt:'Que função é esta? É álcool primário ou terciário? Onde está o grupo na estrutura? Seis treinos, incluindo os pares que mais se confundem.',
+    topicos:['funcao','classe_funcao','pares','grupo','acharGrupo'] },
+  { id:'aleatoria', nome:'Nomenclatura e leitura', res:'Nomear, classificar, calcular Nox',
+    txt:'O jogo sorteia uma molécula do nível que você escolher e pergunta o nome IUPAC, a função, a classificação dos carbonos, o Nox, os testes e os isômeros.',
+    topicos:['nome','classe','nox','quiral','isomeros','teste'] },
+  { id:'laboratorio', nome:'Laboratório de reações', res:'Escolher reagente e prever o produto',
+    txt:'Escolha o reagente e a condição e preveja o produto principal — marcando a alternativa ou desenhando o produto no construtor. Errando, você vê a regra, o mecanismo e o produto se formando.',
+    topicos:['produto_adicao','produto_eliminacao','produto_substituicao','produto_oxidacao','markovnikov','saytzeff','nome_produto'] },
+  { id:'inverso', nome:'Reação inversa', res:'Dos produtos para o reagente',
+    txt:'Você vê os produtos e as condições e descobre de onde vieram. É exatamente o raciocínio que a prova cobra na ozonólise e na oxidação enérgica.',
+    topicos:['inverso'] },
+  { id:'identificacao', nome:'Identificação de frasco', res:'Bancada com nove testes',
+    txt:'Um líquido desconhecido, alguns candidatos e os testes de bancada: água de bromo, Baeyer, Tollens, Fehling, dicromato, sódio, NaOH, bicarbonato e chama. Ganha mais quem usa menos testes.',
+    topicos:['teste'] }
+];
+
+function telaTreinar(){
+  var html = '<div class="card">' +
+    '<h2 style="margin-bottom:2px">Treinar</h2>' +
+    '<p class="sub">Treinos livres, sem ordem obrigatória. Se quiser o caminho guiado, use a Trilha.</p></div>';
+
+  html += '<div class="grid g2" style="margin-top:12px">' + TREINOS.map(function(t){
+    var d = dominioDe(t.topicos);
+    var cor = d===null ? '' : (d>=70 ? 'ok' : (d>=40 ? 'wa' : 'no'));
+    return '<div class="card" data-treino="'+t.id+'" style="cursor:pointer">' +
+      '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">' +
+        '<h3 style="margin:0">'+esc(t.nome)+'</h3>' +
+        '<span style="flex:1"></span>' +
+        (d===null ? '<span class="chip">ainda não praticado</span>'
+                  : '<span class="chip '+cor+'">'+d+'% de acerto</span>') +
+      '</div>' +
+      '<div class="tiny" style="margin:2px 0 6px">'+esc(t.res)+'</div>' +
+      '<div class="sub" style="font-size:13px">'+esc(t.txt)+'</div>' +
+      '</div>';
+  }).join('') + '</div>';
+
+  if(S.revisao.length){
+    html += '<div class="card" style="margin-top:12px;border-color:rgba(251,191,36,.35)">' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<div style="flex:1;min-width:200px"><h3 style="margin:0">Fila de revisão</h3>' +
+      '<div class="sub" style="font-size:13px">'+S.revisao.length+' item(ns) que você errou. Cada um volta até você acertar três vezes.</div></div>' +
+      '<button class="btn pri" id="trRevisar">Revisar agora</button></div></div>';
+  }
+
+  render(html);
+  qsa('[data-treino]').forEach(function(el){
+    el.onclick = function(){ irPara(el.getAttribute('data-treino')); };
+  });
+  if($('trRevisar')) $('trRevisar').onclick = abrirRevisao;
+}
+
+/* ============================================================================
    TELA: NÍVEL (teoria → tutorial → prática → desafio)
    ========================================================================== */
 function telaNivel(args){
@@ -5099,7 +5721,7 @@ function telaNivel(args){
 
   var html = '<div class="card">' +
     '<button class="btn sm gh" id="voltar" style="float:right">&larr; Trilha</button>' +
-    '<h2 style="margin-bottom:2px">Nível '+t.id+' — '+esc(t.nome)+'</h2>' +
+    '<h2 style="margin-bottom:2px">'+esc(t.nome)+'</h2>' +
     '<p class="sub">'+esc(t.desc)+'</p>' +
     '<div class="chips" style="margin-top:8px">' +
       t.topicos.map(function(tp){ return '<span class="chip">'+esc(TOPICO_NOME[tp]||tp)+'</span>'; }).join('') +
@@ -5761,6 +6383,7 @@ function telaFuncoes(args){
   var pct = FUN.total ? Math.round(FUN.acertos/FUN.total*100) : 0;
 
   var html = '<div class="card">' +
+    '<button class="btn sm gh" style="float:right" onclick="irPara(\'treinar\')">&larr; Treinos</button>' +
     '<div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">' +
       '<h2 style="margin:0">Funções orgânicas</h2>' +
       '<span class="sub">reconhecer o grupo antes de prever a reação</span>' +
@@ -5995,7 +6618,7 @@ function renderQuestao(q, el, opts){
     else if(q.equacao){
       html += blocoEquacao(q.mol, q.equacao.reagente, q.equacao.condicao, estado.dicas>=2 ? q.highlight : []);
     }
-    else if(q.mol && !q.escondeMol){
+    else if(q.mol && !q.escondeMol && !q.semMol){
       html += molCard(q.mol, { maxH:220, highlight:q.highlight||[] });
     }
 
@@ -6277,6 +6900,7 @@ function telaAleatoria(){
   var topicos = ['nome','funcao','classe','nox','quiral','teste','isomeros'];
   var html = '<div class="card">' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+    '<button class="btn sm gh" onclick="irPara(\'treinar\')">&larr; Treinos</button>' +
     '<h2 style="margin:0">Molécula aleatória</h2><span style="flex:1"></span>' +
     '<label class="tiny">nível <select id="selNivel" style="width:auto;display:inline-block;min-height:32px;padding:4px 8px">' +
       [1,2,3,4,5,6].map(function(n){ return '<option value="'+n+'"'+(n===ALE.nivel?' selected':'')+'>'+n+'</option>'; }).join('') +
@@ -6326,6 +6950,7 @@ function telaLaboratorio(args){
   var html = '<div class="split">' +
     '<div><div class="card">' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+        '<button class="btn sm gh" onclick="irPara(\'treinar\')">&larr; Treinos</button>' +
         '<h3 style="margin:0">Substrato</h3><span style="flex:1"></span>' +
         '<button class="btn sm" id="labNova">Sortear</button>' +
         '<button class="btn sm gh" id="labMontar">Montar no construtor</button>' +
@@ -6449,7 +7074,9 @@ function questaoDeReacao(m, id, res, r){
    TELA: REAÇÃO INVERSA
    ========================================================================== */
 function telaInverso(){
-  var html = '<div class="card"><h2 style="margin-bottom:2px">Reação inversa</h2>' +
+  var html = '<div class="card">' +
+    '<button class="btn sm gh" style="float:right" onclick="irPara(\'treinar\')">&larr; Treinos</button>' +
+    '<h2 style="margin-bottom:2px">Reação inversa</h2>' +
     '<p class="sub">Você vê os produtos e as condições. Descubra o composto de partida — é o raciocínio que a prova cobra na ozonólise e na oxidação enérgica.</p></div>' +
     '<div id="areaQ"></div>';
   render(html);
@@ -6464,6 +7091,16 @@ function telaInverso(){
    TUTORIAL GUIADO DE CADA NÍVEL (exemplo resolvido passo a passo)
    ========================================================================== */
 var GUIAS = {
+  substituicao_alcano:{
+    sm:'CC(C)CC', titulo:'2-metilbutano + Cl₂ sob luz',
+    passos:[
+      { hl:[], txt:'<b>Passo 1 — que reação é esta?</b> Alcano com halogênio e LUZ: é <b>substituição</b> por mecanismo radicalar. Um H sai e o Cl entra no lugar dele.' },
+      { hl:[0,2,3,4], txt:'<b>Passo 2 — quais hidrogênios existem?</b> Esta molécula tem quatro tipos diferentes de hidrogênio, então a monocloração pode dar <b>4 produtos</b>.' },
+      { hl:[1], txt:'<b>Passo 3 — qual é o preferido?</b> O carbono destacado está ligado a três carbonos: é <b>terciário</b>. O H dele é o mais fácil de arrancar, porque o radical formado é o mais estável.' },
+      { hl:[1], txt:'<b>Passo 4 — produto principal.</b> O cloro entra ali: <b>2-cloro-2-metilbutano</b>. A ordem é sempre 3° > 2° > 1°.' },
+      { hl:[], txt:'<b>Atenção:</b> se o anel fosse um ciclano de 3 ou 4 carbonos, não haveria substituição — haveria ADIÇÃO com abertura do anel (teoria das tensões de Baeyer).' }
+    ]
+  },
   fundamentos:{
     sm:'CC(C)CC', titulo:'Nomear o 2-metilbutano',
     passos:[
@@ -6593,6 +7230,7 @@ function telaIdentificacao(){
 
   var html = '<div class="card">' +
     '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<button class="btn sm gh" onclick="irPara(\'treinar\')">&larr; Treinos</button>' +
       '<h2 style="margin:0">Frasco desconhecido</h2><span style="flex:1"></span>' +
       '<span class="chip">'+IDF.feitos.length+' teste(s) usado(s)</span>' +
       '<button class="btn sm" id="novoFrasco">Novo frasco</button></div>' +
@@ -6715,7 +7353,8 @@ function veredito(i){
 var SIM = null;
 var SIM_TOPICOS = ['nome','nome_produto','produto_adicao','produto_eliminacao','produto_substituicao',
                    'produto_oxidacao','nox','dirigencia','isomeros','condicao','inverso','teste',
-                   'sequencia','markovnikov','saytzeff','classe_funcao','pares'];
+                   'sequencia','markovnikov','saytzeff','classe_funcao','pares',
+                   'conceito','conceito19','conceito20','conceito21','conceito22','conceito23'];
 
 function telaSimulado(){
   if(SIM && !SIM.fim) return rodarSimulado();
@@ -6811,7 +7450,7 @@ function rodarSimulado(){
       }).join('<div class="center" style="font-size:18px;color:#6c7a8e">+</div>') + '</div>';
   } else if(q.equacao){
     html += blocoEquacao(q.mol, q.equacao.reagente, q.equacao.condicao, []);
-  } else if(q.mol && !q.escondeMol){
+  } else if(q.mol && !q.escondeMol && !q.semMol){
     html += molCard(q.mol, { maxH:200, highlight:q.highlight||[] });
   }
 
@@ -6914,7 +7553,7 @@ function encerrarSimulado(){
         '<span class="chip '+(q._ok?'ok':'no')+'">'+(i+1)+(q._ok?' · certa':' · errada')+'</span>' +
         '<span class="tiny">'+esc(TOPICO_NOME[q.topico]||q.topico)+'</span></div>' +
       '<div style="margin-top:6px">'+q.enunciado+'</div>' +
-      (q.mol && !q.escondeMol ? '<div style="max-width:280px;margin:6px 0">'+molCard(q.mol,{maxH:120,highlight:q.highlight||[]})+'</div>' : '') +
+      (q.mol && !q.escondeMol && !q.semMol ? '<div style="max-width:280px;margin:6px 0">'+molCard(q.mol,{maxH:120,highlight:q.highlight||[]})+'</div>' : '') +
       '<div class="tiny">Sua resposta: '+respTxt+' · Correta: <b>'+certaTxt+'</b></div>' +
       '<div class="sub" style="margin-top:5px">'+q.explica+'</div></div>';
   }).join('') + '</div>';
@@ -7091,6 +7730,20 @@ function rodarAutoteste(){
       return erros;
     })(), '0');
   t('tabela de funções completa', FUNCOES.length >= 15, 'true');
+  t('teoria dos capítulos 19 a 23', CONCEITOS.length >= 40, 'true');
+  [19,20,21,22,23].forEach(function(cp){
+    t('capítulo '+cp+' tem teoria', conceitosDoCap(cp).length >= 5, 'true');
+  });
+  t('trilha segue os capítulos', TRILHA.filter(function(t2){ return t2.cap; }).length >= 5, 'true');
+  t('conceitos bem formados', (function(){
+      var ruins = 0;
+      CONCEITOS.forEach(function(c){
+        if(!c.q || !c.exp || !c.ops || c.ops.length<3) ruins++;
+        if(c.certa===undefined || !c.ops[c.certa]) ruins++;
+        if(new Set(c.ops).size !== c.ops.length) ruins++;
+      });
+      return ruins;
+    })(), '0');
   t('pares que confundem', PARES_CONFUSOS.length >= 6, 'true');
 
   var reacoesSemErro = 0;
